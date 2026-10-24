@@ -219,6 +219,60 @@ class Assistant:
         return {"ordered": ordered, "note": f"Ordered by the SLAI language agent ({note.agent}); it only chooses the order, SciCal's rules wrote each proposal.",
                 "notes": gate["notes"] + [note.public()]}
 
+
+    def verify_uncertainty_budget(self, session_id: str, allowed: bool, components: list[dict[str, Any]], ours: float) -> dict[str, Any]:
+        """Request an optional independent STEM uncertainty computation.
+
+        This is opt-in and privacy-gated. It does not replace the SciCal result.
+        Correlation-aware cases are deliberately excluded until a compatible
+        shared covariance contract and independent matrix checks are established.
+        """
+        if not isinstance(components, list) or not 1 <= len(components) <= 12:
+            raise BadRequest("A budget must contain 1 to 12 components")
+        values, sensitivities = [], []
+        for row in components:
+            if not isinstance(row, dict):
+                raise BadRequest("Budget components must be objects")
+            try:
+                standard = float(row["standard"])
+                sensitivity = float(row["sensitivity"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise BadRequest("Budget requires normalized standard uncertainties and sensitivities") from exc
+            if not all(map(math.isfinite, (standard, sensitivity))) or standard < 0:
+                raise BadRequest("Invalid budget component")
+            values.append(standard)
+            sensitivities.append(sensitivity)
+        if not isinstance(ours, (int, float)) or not math.isfinite(ours):
+            raise BadRequest("SciCal result must be finite")
+        gate = self._gate(session_id, allowed, "Scientific uncertainty budget verification: " + str(len(values)) + " numeric inputs")
+        if not gate["forward"]:
+            return {"ran": False, "reason": gate["reason"], "notes": gate["notes"]}
+        gateway = self.link.services.agents
+        try:
+            gateway._init_factory()
+            if gateway.factory is None:
+                return {"ran": False, "reason": gateway.fatal or "STEM unavailable"}
+            agent = getattr(self, "_stem", None) or gateway.factory.create("stem", shared_memory=gateway.shared_memory)
+            self._stem = agent
+            available = agent.available_operations()
+            if "combined_standard_uncertainty" not in available.get("uncertainty", ()):
+                return {"ran": False, "reason": "STEM uncertainty operation is not available"}
+            response = agent.perform_task({"domain": "uncertainty",
+                                           "operation": "combined_standard_uncertainty",
+                                           "args": [values], "kwargs": {"sensitivity": sensitivities},
+                                           "cache": True, "publish": False})
+            result = response.get("result") if isinstance(response, dict) else None
+            stem = float(result)
+            if not math.isfinite(stem):
+                raise ValueError("STEM returned nonfinite result")
+        except Exception as exc:  # noqa: BLE001 - keep SciCal authoritative on optional failure
+            return {"ran": False, "reason": f"STEM cross-check unavailable: {type(exc).__name__}: {str(exc)[:160]}"}
+        difference = abs(stem - float(ours))
+        return {"ran": True, "scical": float(ours), "stem": stem, "difference": difference,
+                "agree": difference <= 1e-12 + 1e-9 * max(abs(stem), abs(float(ours))),
+                "operation": "uncertainty.combined_standard_uncertainty", "independentInputsOnly": True,
+                "notes": gate["notes"]}
+
     # ------------------------------------------------------------------ STEM cross-check
     def crosscheck(self, kind: str, params: dict[str, Any], ours: dict[str, float]) -> dict[str, Any]:
         """Ask the SLAI STEM agent for the same statistics and compare. ``ours`` maps statistic -> the value SciCal computed."""
