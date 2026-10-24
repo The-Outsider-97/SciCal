@@ -1,0 +1,287 @@
+{
+ "meta": {
+  "name": "CODATA recommended values of the fundamental physical constants",
+  "version": "CODATA 2022",
+  "source": "NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025)",
+  "transcribed_from": "scipy.constants (scipy 1.18.1)",
+  "note": "Constants listed with no uncertainty are exact. Values are decimal strings; SciCal reads them as exact decimals."
+ },
+ "constants": {
+  "c": {
+   "name": "speed of light in vacuum",
+   "symbol": "c",
+   "value": "299792458",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "m/s",
+   "codata_name": "speed of light in vacuum"
+  },
+  "h": {
+   "name": "Planck constant",
+   "symbol": "h",
+   "value": "6.62607015e-34",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "J*s",
+   "codata_name": "Planck constant"
+  },
+  "hbar": {
+   "name": "reduced Planck constant",
+   "symbol": "ħ",
+   "value": "1.0545718176461565e-34",
+   "uncertainty": null,
+   "exact": false,
+   "unit": "J*s",
+   "codata_name": "reduced Planck constant",
+   "note": "Fixed exactly by the SI defining constants, but not a finite decimal; the value is rounded to 17 digits."
+  },
+  "e": {
+   "name": "elementary charge",
+   "symbol": "e",
+   "value": "1.602176634e-19",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "C",
+   "codata_name": "elementary charge"
+  },
+  "kB": {
+   "name": "Boltzmann constant",
+   "symbol": "k_B",
+   "value": "1.380649e-23",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "J/K",
+   "codata_name": "Boltzmann constant"
+  },
+  "NA": {
+   "name": "Avogadro constant",
+   "symbol": "N_A",
+   "value": "6.02214076e23",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "1/mol",
+   "codata_name": "Avogadro constant"
+  },
+  "R": {
+   "name": "molar gas constant",
+   "symbol": "R",
+   "value": "8.31446261815324",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "J/(mol*K)",
+   "codata_name": "molar gas constant"
+  },
+  "F": {
+   "name": "Faraday constant",
+   "symbol": "F",
+   "value": "96485.3321233100184",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "C/mol",
+   "codata_name": "Faraday constant"
+  },
+  "sigma": {
+   "name": "Stefan-Boltzmann constant",
+   "symbol": "σ",
+   "value": "5.6703744191844314e-08",
+   "uncertainty": null,
+   "exact": false,
+   "unit": "W/(m^2*K^4)",
+   "codata_name": "Stefan-Boltzmann constant",
+   "note": "Fixed exactly by the SI defining constants, but not a finite decimal; the value is rounded to 17 digits."
+  },
+  "b": {
+   "name": "Wien wavelength displacement law constant",
+   "symbol": "b",
+   "value": "0.0028977719551851727",
+   "uncertainty": null,
+   "exact": false,
+   "unit": "m*K",
+   "codata_name": "Wien wavelength displacement law constant",
+   "note": "Fixed exactly by the SI defining constants, but not a finite decimal; the value is rounded to 17 digits."
+  },
+  "G": {
+   "name": "Newtonian constant of gravitation",
+   "symbol": "G",
+   "value": "6.6743e-11",
+   "uncertainty": "1.5e-15",
+   "exact": false,
+   "unit": "m^3/(kg*s^2)",
+   "codata_name": "Newtonian constant of gravitation"
+  },
+  "gn": {
+   "name": "standard acceleration of gravity",
+   "symbol": "g_n",
+   "value": "9.80665",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "m/s^2",
+   "codata_name": "standard acceleration of gravity"
+  },
+  "atm": {
+   "name": "standard atmosphere",
+   "symbol": "atm",
+   "value": "101325",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "Pa",
+   "codata_name": "standard atmosphere"
+  },
+  "me": {
+   "name": "electron mass",
+   "symbol": "m_e",
+   "value": "9.1093837139e-31",
+   "uncertainty": "2.8e-40",
+   "exact": false,
+   "unit": "kg",
+   "codata_name": "electron mass"
+  },
+  "mp": {
+   "name": "proton mass",
+   "symbol": "m_p",
+   "value": "1.67262192595e-27",
+   "uncertainty": "5.2e-37",
+   "exact": false,
+   "unit": "kg",
+   "codata_name": "proton mass"
+  },
+  "mn": {
+   "name": "neutron mass",
+   "symbol": "m_n",
+   "value": "1.67492750056e-27",
+   "uncertainty": "8.5e-37",
+   "exact": false,
+   "unit": "kg",
+   "codata_name": "neutron mass"
+  },
+  "mu": {
+   "name": "atomic mass constant",
+   "symbol": "m_u",
+   "value": "1.66053906892e-27",
+   "uncertainty": "5.2e-37",
+   "exact": false,
+   "unit": "kg",
+   "codata_name": "atomic mass constant"
+  },
+  "alpha": {
+   "name": "fine-structure constant",
+   "symbol": "α",
+   "value": "0.0072973525643",
+   "uncertainty": "1.1e-12",
+   "exact": false,
+   "unit": "",
+   "codata_name": "fine-structure constant"
+  },
+  "eps0": {
+   "name": "vacuum electric permittivity",
+   "symbol": "ε₀",
+   "value": "8.8541878188e-12",
+   "uncertainty": "1.4e-21",
+   "exact": false,
+   "unit": "F/m",
+   "codata_name": "vacuum electric permittivity"
+  },
+  "mu0": {
+   "name": "vacuum magnetic permeability",
+   "symbol": "μ₀",
+   "value": "1.25663706127e-06",
+   "uncertainty": "2e-16",
+   "exact": false,
+   "unit": "N/A^2",
+   "codata_name": "vacuum mag. permeability"
+  },
+  "Z0": {
+   "name": "characteristic impedance of vacuum",
+   "symbol": "Z₀",
+   "value": "376.730313412",
+   "uncertainty": "5.9e-08",
+   "exact": false,
+   "unit": "ohm",
+   "codata_name": "characteristic impedance of vacuum"
+  },
+  "Rinf": {
+   "name": "Rydberg constant",
+   "symbol": "R∞",
+   "value": "10973731.568157",
+   "uncertainty": "1.2e-05",
+   "exact": false,
+   "unit": "1/m",
+   "codata_name": "Rydberg constant"
+  },
+  "a0": {
+   "name": "Bohr radius",
+   "symbol": "a₀",
+   "value": "5.29177210544e-11",
+   "uncertainty": "8.2e-21",
+   "exact": false,
+   "unit": "m",
+   "codata_name": "Bohr radius"
+  },
+  "muB": {
+   "name": "Bohr magneton",
+   "symbol": "μ_B",
+   "value": "9.2740100657e-24",
+   "uncertainty": "2.9e-33",
+   "exact": false,
+   "unit": "J/T",
+   "codata_name": "Bohr magneton"
+  },
+  "muN": {
+   "name": "nuclear magneton",
+   "symbol": "μ_N",
+   "value": "5.0507837393e-27",
+   "uncertainty": "1.6e-36",
+   "exact": false,
+   "unit": "J/T",
+   "codata_name": "nuclear magneton"
+  },
+  "re": {
+   "name": "classical electron radius",
+   "symbol": "r_e",
+   "value": "2.8179403205e-15",
+   "uncertainty": "1.3e-24",
+   "exact": false,
+   "unit": "m",
+   "codata_name": "classical electron radius"
+  },
+  "lambdaC": {
+   "name": "Compton wavelength",
+   "symbol": "λ_C",
+   "value": "2.42631023538e-12",
+   "uncertainty": "7.6e-22",
+   "exact": false,
+   "unit": "m",
+   "codata_name": "Compton wavelength"
+  },
+  "Vm": {
+   "name": "molar volume of an ideal gas at 273.15 K and 101.325 kPa",
+   "symbol": "V_m",
+   "value": "0.022413969545014137",
+   "uncertainty": null,
+   "exact": false,
+   "unit": "m^3/mol",
+   "codata_name": "molar volume of ideal gas (273.15 K, 101.325 kPa)",
+   "note": "Fixed exactly by the SI defining constants, but not a finite decimal; the value is rounded to 17 digits."
+  },
+  "KJ": {
+   "name": "Josephson constant",
+   "symbol": "K_J",
+   "value": "483597848416983.6",
+   "uncertainty": null,
+   "exact": false,
+   "unit": "Hz/V",
+   "codata_name": "Josephson constant",
+   "note": "Fixed exactly by the SI defining constants, but not a finite decimal; the value is rounded to 17 digits."
+  },
+  "RK": {
+   "name": "von Klitzing constant",
+   "symbol": "R_K",
+   "value": "25812.807459304513",
+   "uncertainty": null,
+   "exact": false,
+   "unit": "ohm",
+   "codata_name": "von Klitzing constant",
+   "note": "Fixed exactly by the SI defining constants, but not a finite decimal; the value is rounded to 17 digits."
+  }
+ }
+}

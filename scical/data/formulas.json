@@ -1,0 +1,2066 @@
+{
+ "meta": {
+  "count": 73,
+  "note": "Equations are written in SciCal syntax. Every entry is dimensionally checked when this file is built."
+ },
+ "formulas": [
+  {
+   "id": "newton2",
+   "category": "Physics",
+   "name": "Newton's second law",
+   "equation": "F = m*a",
+   "latex": "F = a m",
+   "variables": [
+    {
+     "symbol": "F",
+     "name": "force",
+     "unit": "N"
+    },
+    {
+     "symbol": "m",
+     "name": "mass",
+     "unit": "kg"
+    },
+    {
+     "symbol": "a",
+     "name": "acceleration",
+     "unit": "m/s^2"
+    }
+   ],
+   "note": "Net force on a body of constant mass."
+  },
+  {
+   "id": "weight",
+   "category": "Physics",
+   "name": "Weight",
+   "equation": "W = m*g",
+   "latex": "W = g m",
+   "variables": [
+    {
+     "symbol": "W",
+     "name": "weight",
+     "unit": "N"
+    },
+    {
+     "symbol": "m",
+     "name": "mass",
+     "unit": "kg"
+    },
+    {
+     "symbol": "g",
+     "name": "gravitational acceleration",
+     "unit": "m/s^2",
+     "constant": "gn"
+    }
+   ],
+   "note": "Uses standard gravity by default."
+  },
+  {
+   "id": "speed",
+   "category": "Physics",
+   "name": "Average speed",
+   "equation": "v = d/t",
+   "latex": "v = \\frac{d}{t}",
+   "variables": [
+    {
+     "symbol": "v",
+     "name": "speed",
+     "unit": "m/s"
+    },
+    {
+     "symbol": "d",
+     "name": "distance",
+     "unit": "m"
+    },
+    {
+     "symbol": "t",
+     "name": "time",
+     "unit": "s"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "kin1",
+   "category": "Physics",
+   "name": "Kinematics: v = u + at",
+   "equation": "v = u + a*t",
+   "latex": "v = a t + u",
+   "variables": [
+    {
+     "symbol": "v",
+     "name": "final velocity",
+     "unit": "m/s"
+    },
+    {
+     "symbol": "u",
+     "name": "initial velocity",
+     "unit": "m/s"
+    },
+    {
+     "symbol": "a",
+     "name": "acceleration",
+     "unit": "m/s^2"
+    },
+    {
+     "symbol": "t",
+     "name": "time",
+     "unit": "s"
+    }
+   ],
+   "note": "Constant acceleration."
+  },
+  {
+   "id": "kin2",
+   "category": "Physics",
+   "name": "Kinematics: s = ut + ½at²",
+   "equation": "s = u*t + a*t^2/2",
+   "latex": "s = \\frac{a t^{2}}{2} + t u",
+   "variables": [
+    {
+     "symbol": "s",
+     "name": "displacement",
+     "unit": "m"
+    },
+    {
+     "symbol": "u",
+     "name": "initial velocity",
+     "unit": "m/s"
+    },
+    {
+     "symbol": "a",
+     "name": "acceleration",
+     "unit": "m/s^2"
+    },
+    {
+     "symbol": "t",
+     "name": "time",
+     "unit": "s"
+    }
+   ],
+   "note": "Constant acceleration."
+  },
+  {
+   "id": "kin3",
+   "category": "Physics",
+   "name": "Kinematics: v² = u² + 2as",
+   "equation": "v^2 = u^2 + 2*a*s",
+   "latex": "v^{2} = 2 a s + u^{2}",
+   "variables": [
+    {
+     "symbol": "v",
+     "name": "final velocity",
+     "unit": "m/s"
+    },
+    {
+     "symbol": "u",
+     "name": "initial velocity",
+     "unit": "m/s"
+    },
+    {
+     "symbol": "a",
+     "name": "acceleration",
+     "unit": "m/s^2"
+    },
+    {
+     "symbol": "s",
+     "name": "displacement",
+     "unit": "m"
+    }
+   ],
+   "note": "Constant acceleration; the speed squared hides the direction, so solving for v or u gives ± roots."
+  },
+  {
+   "id": "momentum",
+   "category": "Physics",
+   "name": "Momentum",
+   "equation": "p = m*v",
+   "latex": "p = m v",
+   "variables": [
+    {
+     "symbol": "p",
+     "name": "momentum",
+     "unit": "kg*m/s"
+    },
+    {
+     "symbol": "m",
+     "name": "mass",
+     "unit": "kg"
+    },
+    {
+     "symbol": "v",
+     "name": "velocity",
+     "unit": "m/s"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "kinetic",
+   "category": "Physics",
+   "name": "Kinetic energy",
+   "equation": "E = m*v^2/2",
+   "latex": "E = \\frac{m v^{2}}{2}",
+   "variables": [
+    {
+     "symbol": "E",
+     "name": "kinetic energy",
+     "unit": "J"
+    },
+    {
+     "symbol": "m",
+     "name": "mass",
+     "unit": "kg"
+    },
+    {
+     "symbol": "v",
+     "name": "speed",
+     "unit": "m/s"
+    }
+   ],
+   "note": "Non-relativistic."
+  },
+  {
+   "id": "potential",
+   "category": "Physics",
+   "name": "Gravitational potential energy",
+   "equation": "E = m*g*h",
+   "latex": "E = g h m",
+   "variables": [
+    {
+     "symbol": "E",
+     "name": "potential energy",
+     "unit": "J"
+    },
+    {
+     "symbol": "m",
+     "name": "mass",
+     "unit": "kg"
+    },
+    {
+     "symbol": "g",
+     "name": "gravitational acceleration",
+     "unit": "m/s^2",
+     "constant": "gn"
+    },
+    {
+     "symbol": "h",
+     "name": "height",
+     "unit": "m"
+    }
+   ],
+   "note": "Near the Earth's surface."
+  },
+  {
+   "id": "work",
+   "category": "Physics",
+   "name": "Work",
+   "equation": "W = F*d*cos(theta)",
+   "latex": "W = F d \\cos{\\left(\\theta \\right)}",
+   "variables": [
+    {
+     "symbol": "W",
+     "name": "work",
+     "unit": "J"
+    },
+    {
+     "symbol": "F",
+     "name": "force",
+     "unit": "N"
+    },
+    {
+     "symbol": "d",
+     "name": "displacement",
+     "unit": "m"
+    },
+    {
+     "symbol": "theta",
+     "name": "angle between force and displacement",
+     "unit": "rad"
+    }
+   ],
+   "note": "Enter the angle in rad or with deg, e.g. 30 deg."
+  },
+  {
+   "id": "power",
+   "category": "Physics",
+   "name": "Power",
+   "equation": "P = E/t",
+   "latex": "P = \\frac{E}{t}",
+   "variables": [
+    {
+     "symbol": "P",
+     "name": "power",
+     "unit": "W"
+    },
+    {
+     "symbol": "E",
+     "name": "energy",
+     "unit": "J"
+    },
+    {
+     "symbol": "t",
+     "name": "time",
+     "unit": "s"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "pressure",
+   "category": "Physics",
+   "name": "Pressure",
+   "equation": "P = F/A",
+   "latex": "P = \\frac{F}{A}",
+   "variables": [
+    {
+     "symbol": "P",
+     "name": "pressure",
+     "unit": "Pa"
+    },
+    {
+     "symbol": "F",
+     "name": "force",
+     "unit": "N"
+    },
+    {
+     "symbol": "A",
+     "name": "area",
+     "unit": "m^2"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "density",
+   "category": "Physics",
+   "name": "Density",
+   "equation": "rho = m/V",
+   "latex": "\\rho = \\frac{m}{V}",
+   "variables": [
+    {
+     "symbol": "rho",
+     "name": "density",
+     "unit": "kg/m^3"
+    },
+    {
+     "symbol": "m",
+     "name": "mass",
+     "unit": "kg"
+    },
+    {
+     "symbol": "V",
+     "name": "volume",
+     "unit": "m^3"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "hooke",
+   "category": "Physics",
+   "name": "Hooke's law",
+   "equation": "F = k*x",
+   "latex": "F = k x",
+   "variables": [
+    {
+     "symbol": "F",
+     "name": "force",
+     "unit": "N"
+    },
+    {
+     "symbol": "k",
+     "name": "spring constant",
+     "unit": "N/m"
+    },
+    {
+     "symbol": "x",
+     "name": "extension",
+     "unit": "m"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "spring_energy",
+   "category": "Physics",
+   "name": "Spring energy",
+   "equation": "E = k*x^2/2",
+   "latex": "E = \\frac{k x^{2}}{2}",
+   "variables": [
+    {
+     "symbol": "E",
+     "name": "stored energy",
+     "unit": "J"
+    },
+    {
+     "symbol": "k",
+     "name": "spring constant",
+     "unit": "N/m"
+    },
+    {
+     "symbol": "x",
+     "name": "extension",
+     "unit": "m"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "centripetal",
+   "category": "Physics",
+   "name": "Centripetal acceleration",
+   "equation": "a = v^2/r",
+   "latex": "a = \\frac{v^{2}}{r}",
+   "variables": [
+    {
+     "symbol": "a",
+     "name": "acceleration",
+     "unit": "m/s^2"
+    },
+    {
+     "symbol": "v",
+     "name": "speed",
+     "unit": "m/s"
+    },
+    {
+     "symbol": "r",
+     "name": "radius",
+     "unit": "m"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "pendulum",
+   "category": "Physics",
+   "name": "Simple pendulum period",
+   "equation": "T = 2*pi*sqrt(L/g)",
+   "latex": "T = 2 \\pi \\sqrt{\\frac{L}{g}}",
+   "variables": [
+    {
+     "symbol": "T",
+     "name": "period",
+     "unit": "s"
+    },
+    {
+     "symbol": "L",
+     "name": "length",
+     "unit": "m"
+    },
+    {
+     "symbol": "g",
+     "name": "gravitational acceleration",
+     "unit": "m/s^2",
+     "constant": "gn"
+    }
+   ],
+   "note": "Small angles only."
+  },
+  {
+   "id": "wave",
+   "category": "Physics",
+   "name": "Wave speed",
+   "equation": "v = f*lam",
+   "latex": "v = f lam",
+   "variables": [
+    {
+     "symbol": "v",
+     "name": "wave speed",
+     "unit": "m/s"
+    },
+    {
+     "symbol": "f",
+     "name": "frequency",
+     "unit": "Hz"
+    },
+    {
+     "symbol": "lam",
+     "name": "wavelength",
+     "unit": "m"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "photon_f",
+   "category": "Physics",
+   "name": "Photon energy (frequency)",
+   "equation": "E = h*f",
+   "latex": "E = f h",
+   "variables": [
+    {
+     "symbol": "E",
+     "name": "photon energy",
+     "unit": "J"
+    },
+    {
+     "symbol": "h",
+     "name": "Planck constant",
+     "unit": "J*s",
+     "constant": "h"
+    },
+    {
+     "symbol": "f",
+     "name": "frequency",
+     "unit": "Hz"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "photon_l",
+   "category": "Physics",
+   "name": "Photon energy (wavelength)",
+   "equation": "E = h*c/lam",
+   "latex": "E = \\frac{c h}{lam}",
+   "variables": [
+    {
+     "symbol": "E",
+     "name": "photon energy",
+     "unit": "J"
+    },
+    {
+     "symbol": "h",
+     "name": "Planck constant",
+     "unit": "J*s",
+     "constant": "h"
+    },
+    {
+     "symbol": "c",
+     "name": "speed of light",
+     "unit": "m/s",
+     "constant": "c"
+    },
+    {
+     "symbol": "lam",
+     "name": "wavelength",
+     "unit": "m"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "debroglie",
+   "category": "Physics",
+   "name": "de Broglie wavelength",
+   "equation": "lam = h/(m*v)",
+   "latex": "lam = \\frac{h}{m v}",
+   "variables": [
+    {
+     "symbol": "lam",
+     "name": "wavelength",
+     "unit": "m"
+    },
+    {
+     "symbol": "h",
+     "name": "Planck constant",
+     "unit": "J*s",
+     "constant": "h"
+    },
+    {
+     "symbol": "m",
+     "name": "mass",
+     "unit": "kg"
+    },
+    {
+     "symbol": "v",
+     "name": "speed",
+     "unit": "m/s"
+    }
+   ],
+   "note": "Non-relativistic."
+  },
+  {
+   "id": "massenergy",
+   "category": "Physics",
+   "name": "Mass–energy equivalence",
+   "equation": "E = m*c^2",
+   "latex": "E = c^{2} m",
+   "variables": [
+    {
+     "symbol": "E",
+     "name": "energy",
+     "unit": "J"
+    },
+    {
+     "symbol": "m",
+     "name": "mass",
+     "unit": "kg"
+    },
+    {
+     "symbol": "c",
+     "name": "speed of light",
+     "unit": "m/s",
+     "constant": "c"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "ohm",
+   "category": "Physics",
+   "name": "Ohm's law",
+   "equation": "V = I*R",
+   "latex": "V = I R",
+   "variables": [
+    {
+     "symbol": "V",
+     "name": "voltage",
+     "unit": "V"
+    },
+    {
+     "symbol": "I",
+     "name": "current",
+     "unit": "A"
+    },
+    {
+     "symbol": "R",
+     "name": "resistance",
+     "unit": "ohm"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "elec_power",
+   "category": "Physics",
+   "name": "Electrical power",
+   "equation": "P = V*I",
+   "latex": "P = I V",
+   "variables": [
+    {
+     "symbol": "P",
+     "name": "power",
+     "unit": "W"
+    },
+    {
+     "symbol": "V",
+     "name": "voltage",
+     "unit": "V"
+    },
+    {
+     "symbol": "I",
+     "name": "current",
+     "unit": "A"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "capacitor_q",
+   "category": "Physics",
+   "name": "Capacitor charge",
+   "equation": "Q = C*V",
+   "latex": "Q = C V",
+   "variables": [
+    {
+     "symbol": "Q",
+     "name": "charge",
+     "unit": "C"
+    },
+    {
+     "symbol": "C",
+     "name": "capacitance",
+     "unit": "F"
+    },
+    {
+     "symbol": "V",
+     "name": "voltage",
+     "unit": "V"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "capacitor_e",
+   "category": "Physics",
+   "name": "Capacitor energy",
+   "equation": "E = C*V^2/2",
+   "latex": "E = \\frac{C V^{2}}{2}",
+   "variables": [
+    {
+     "symbol": "E",
+     "name": "stored energy",
+     "unit": "J"
+    },
+    {
+     "symbol": "C",
+     "name": "capacitance",
+     "unit": "F"
+    },
+    {
+     "symbol": "V",
+     "name": "voltage",
+     "unit": "V"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "coulomb",
+   "category": "Physics",
+   "name": "Coulomb's law",
+   "equation": "F = qa*qb/(4*pi*eps0*r^2)",
+   "latex": "F = \\frac{qa qb}{4 \\pi eps_{0} r^{2}}",
+   "variables": [
+    {
+     "symbol": "F",
+     "name": "force",
+     "unit": "N"
+    },
+    {
+     "symbol": "qa",
+     "name": "charge A",
+     "unit": "C"
+    },
+    {
+     "symbol": "qb",
+     "name": "charge B",
+     "unit": "C"
+    },
+    {
+     "symbol": "eps0",
+     "name": "vacuum permittivity",
+     "unit": "F/m",
+     "constant": "eps0"
+    },
+    {
+     "symbol": "r",
+     "name": "separation",
+     "unit": "m"
+    }
+   ],
+   "note": "Positive F repels; negative F attracts."
+  },
+  {
+   "id": "gravitation",
+   "category": "Physics",
+   "name": "Newton's law of gravitation",
+   "equation": "F = G*m1*m2/r^2",
+   "latex": "F = \\frac{G m_{1} m_{2}}{r^{2}}",
+   "variables": [
+    {
+     "symbol": "F",
+     "name": "force",
+     "unit": "N"
+    },
+    {
+     "symbol": "G",
+     "name": "gravitational constant",
+     "unit": "m^3/(kg*s^2)",
+     "constant": "G"
+    },
+    {
+     "symbol": "m1",
+     "name": "mass 1",
+     "unit": "kg"
+    },
+    {
+     "symbol": "m2",
+     "name": "mass 2",
+     "unit": "kg"
+    },
+    {
+     "symbol": "r",
+     "name": "separation",
+     "unit": "m"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "escape",
+   "category": "Physics",
+   "name": "Escape velocity",
+   "equation": "v = sqrt(2*G*M/r)",
+   "latex": "v = \\sqrt{2} \\sqrt{\\frac{G M}{r}}",
+   "variables": [
+    {
+     "symbol": "v",
+     "name": "escape velocity",
+     "unit": "m/s"
+    },
+    {
+     "symbol": "G",
+     "name": "gravitational constant",
+     "unit": "m^3/(kg*s^2)",
+     "constant": "G"
+    },
+    {
+     "symbol": "M",
+     "name": "mass of the body",
+     "unit": "kg"
+    },
+    {
+     "symbol": "r",
+     "name": "distance from centre",
+     "unit": "m"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "projectile",
+   "category": "Physics",
+   "name": "Projectile range",
+   "equation": "R = v^2*sin(2*theta)/g",
+   "latex": "R = \\frac{v^{2} \\sin{\\left(2 \\theta \\right)}}{g}",
+   "variables": [
+    {
+     "symbol": "R",
+     "name": "range",
+     "unit": "m"
+    },
+    {
+     "symbol": "v",
+     "name": "launch speed",
+     "unit": "m/s"
+    },
+    {
+     "symbol": "theta",
+     "name": "launch angle",
+     "unit": "rad"
+    },
+    {
+     "symbol": "g",
+     "name": "gravitational acceleration",
+     "unit": "m/s^2",
+     "constant": "gn"
+    }
+   ],
+   "note": "Level ground, no air resistance."
+  },
+  {
+   "id": "snell",
+   "category": "Physics",
+   "name": "Snell's law",
+   "equation": "n1*sin(t1) = n2*sin(t2)",
+   "latex": "n_{1} \\sin{\\left(t_{1} \\right)} = n_{2} \\sin{\\left(t_{2} \\right)}",
+   "variables": [
+    {
+     "symbol": "n1",
+     "name": "index 1",
+     "unit": ""
+    },
+    {
+     "symbol": "t1",
+     "name": "angle 1",
+     "unit": "rad"
+    },
+    {
+     "symbol": "n2",
+     "name": "index 2",
+     "unit": ""
+    },
+    {
+     "symbol": "t2",
+     "name": "angle 2",
+     "unit": "rad"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "lens",
+   "category": "Physics",
+   "name": "Thin lens equation",
+   "equation": "1/f = 1/do + 1/di",
+   "latex": "\\frac{1}{f} = \\frac{1}{do} + \\frac{1}{di}",
+   "variables": [
+    {
+     "symbol": "f",
+     "name": "focal length",
+     "unit": "m"
+    },
+    {
+     "symbol": "do",
+     "name": "object distance",
+     "unit": "m"
+    },
+    {
+     "symbol": "di",
+     "name": "image distance",
+     "unit": "m"
+    }
+   ],
+   "note": "Real-is-positive convention."
+  },
+  {
+   "id": "heat",
+   "category": "Physics",
+   "name": "Heat transfer",
+   "equation": "q = m*c*dT",
+   "latex": "q = c dT m",
+   "variables": [
+    {
+     "symbol": "q",
+     "name": "heat",
+     "unit": "J"
+    },
+    {
+     "symbol": "m",
+     "name": "mass",
+     "unit": "kg"
+    },
+    {
+     "symbol": "c",
+     "name": "specific heat",
+     "unit": "J/(kg*K)"
+    },
+    {
+     "symbol": "dT",
+     "name": "temperature change",
+     "unit": "K"
+    }
+   ],
+   "note": "Use K or delta_degC for the temperature change."
+  },
+  {
+   "id": "stefan",
+   "category": "Physics",
+   "name": "Stefan–Boltzmann law",
+   "equation": "P = sigma*A*T^4",
+   "latex": "P = A T^{4} \\sigma",
+   "variables": [
+    {
+     "symbol": "P",
+     "name": "radiated power",
+     "unit": "W"
+    },
+    {
+     "symbol": "sigma",
+     "name": "Stefan–Boltzmann constant",
+     "unit": "W/(m^2*K^4)",
+     "constant": "sigma"
+    },
+    {
+     "symbol": "A",
+     "name": "area",
+     "unit": "m^2"
+    },
+    {
+     "symbol": "T",
+     "name": "temperature",
+     "unit": "K"
+    }
+   ],
+   "note": "For an ideal black body."
+  },
+  {
+   "id": "moles",
+   "category": "Chemistry",
+   "name": "Amount of substance",
+   "equation": "n = m/M",
+   "latex": "n = \\frac{m}{M}",
+   "variables": [
+    {
+     "symbol": "n",
+     "name": "amount",
+     "unit": "mol"
+    },
+    {
+     "symbol": "m",
+     "name": "mass",
+     "unit": "g"
+    },
+    {
+     "symbol": "M",
+     "name": "molar mass",
+     "unit": "g/mol"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "molarity",
+   "category": "Chemistry",
+   "name": "Molarity",
+   "equation": "c = n/V",
+   "latex": "c = \\frac{n}{V}",
+   "variables": [
+    {
+     "symbol": "c",
+     "name": "concentration",
+     "unit": "mol/L"
+    },
+    {
+     "symbol": "n",
+     "name": "amount",
+     "unit": "mol"
+    },
+    {
+     "symbol": "V",
+     "name": "volume",
+     "unit": "L"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "dilution",
+   "category": "Chemistry",
+   "name": "Dilution",
+   "equation": "c1*V1 = c2*V2",
+   "latex": "V_{1} c_{1} = V_{2} c_{2}",
+   "variables": [
+    {
+     "symbol": "c1",
+     "name": "concentration 1",
+     "unit": "mol/L"
+    },
+    {
+     "symbol": "V1",
+     "name": "volume 1",
+     "unit": "L"
+    },
+    {
+     "symbol": "c2",
+     "name": "concentration 2",
+     "unit": "mol/L"
+    },
+    {
+     "symbol": "V2",
+     "name": "volume 2",
+     "unit": "L"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "idealgas",
+   "category": "Chemistry",
+   "name": "Ideal gas law",
+   "equation": "P*V = n*R*T",
+   "latex": "P V = R T n",
+   "variables": [
+    {
+     "symbol": "P",
+     "name": "pressure",
+     "unit": "Pa"
+    },
+    {
+     "symbol": "V",
+     "name": "volume",
+     "unit": "m^3"
+    },
+    {
+     "symbol": "n",
+     "name": "amount",
+     "unit": "mol"
+    },
+    {
+     "symbol": "R",
+     "name": "gas constant",
+     "unit": "J/(mol*K)",
+     "constant": "R"
+    },
+    {
+     "symbol": "T",
+     "name": "temperature",
+     "unit": "K"
+    }
+   ],
+   "note": "Enter temperatures in kelvin or with degC; the conversion is exact."
+  },
+  {
+   "id": "boyle",
+   "category": "Chemistry",
+   "name": "Boyle's law",
+   "equation": "P1*V1 = P2*V2",
+   "latex": "P_{1} V_{1} = P_{2} V_{2}",
+   "variables": [
+    {
+     "symbol": "P1",
+     "name": "pressure 1",
+     "unit": "Pa"
+    },
+    {
+     "symbol": "V1",
+     "name": "volume 1",
+     "unit": "m^3"
+    },
+    {
+     "symbol": "P2",
+     "name": "pressure 2",
+     "unit": "Pa"
+    },
+    {
+     "symbol": "V2",
+     "name": "volume 2",
+     "unit": "m^3"
+    }
+   ],
+   "note": "Constant amount and temperature."
+  },
+  {
+   "id": "charles",
+   "category": "Chemistry",
+   "name": "Charles's law",
+   "equation": "V1/T1 = V2/T2",
+   "latex": "\\frac{V_{1}}{T_{1}} = \\frac{V_{2}}{T_{2}}",
+   "variables": [
+    {
+     "symbol": "V1",
+     "name": "volume 1",
+     "unit": "m^3"
+    },
+    {
+     "symbol": "T1",
+     "name": "temperature 1",
+     "unit": "K"
+    },
+    {
+     "symbol": "V2",
+     "name": "volume 2",
+     "unit": "m^3"
+    },
+    {
+     "symbol": "T2",
+     "name": "temperature 2",
+     "unit": "K"
+    }
+   ],
+   "note": "Constant amount and pressure; kelvin only."
+  },
+  {
+   "id": "combined",
+   "category": "Chemistry",
+   "name": "Combined gas law",
+   "equation": "P1*V1/T1 = P2*V2/T2",
+   "latex": "\\frac{P_{1} V_{1}}{T_{1}} = \\frac{P_{2} V_{2}}{T_{2}}",
+   "variables": [
+    {
+     "symbol": "P1",
+     "name": "pressure 1",
+     "unit": "Pa"
+    },
+    {
+     "symbol": "V1",
+     "name": "volume 1",
+     "unit": "m^3"
+    },
+    {
+     "symbol": "T1",
+     "name": "temperature 1",
+     "unit": "K"
+    },
+    {
+     "symbol": "P2",
+     "name": "pressure 2",
+     "unit": "Pa"
+    },
+    {
+     "symbol": "V2",
+     "name": "volume 2",
+     "unit": "m^3"
+    },
+    {
+     "symbol": "T2",
+     "name": "temperature 2",
+     "unit": "K"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "graham",
+   "category": "Chemistry",
+   "name": "Graham's law",
+   "equation": "r1/r2 = sqrt(M2/M1)",
+   "latex": "\\frac{r_{1}}{r_{2}} = \\sqrt{\\frac{M_{2}}{M_{1}}}",
+   "variables": [
+    {
+     "symbol": "r1",
+     "name": "rate 1",
+     "unit": ""
+    },
+    {
+     "symbol": "r2",
+     "name": "rate 2",
+     "unit": ""
+    },
+    {
+     "symbol": "M1",
+     "name": "molar mass 1",
+     "unit": "g/mol"
+    },
+    {
+     "symbol": "M2",
+     "name": "molar mass 2",
+     "unit": "g/mol"
+    }
+   ],
+   "note": "Rates only enter as a ratio."
+  },
+  {
+   "id": "ph",
+   "category": "Chemistry",
+   "name": "pH",
+   "equation": "pH = -log(H)",
+   "latex": "pH = - \\frac{\\log{\\left(H \\right)}}{\\log{\\left(10 \\right)}}",
+   "variables": [
+    {
+     "symbol": "pH",
+     "name": "pH",
+     "unit": ""
+    },
+    {
+     "symbol": "H",
+     "name": "hydronium activity (mol/L, as a number)",
+     "unit": ""
+    }
+   ],
+   "note": "[H₃O⁺] in mol/L as a plain number. log is base 10. Ideal-solution definition."
+  },
+  {
+   "id": "hh",
+   "category": "Chemistry",
+   "name": "Henderson–Hasselbalch",
+   "equation": "pH = pKa + log(A/HA)",
+   "latex": "pH = pKa + \\frac{\\log{\\left(\\frac{A}{HA} \\right)}}{\\log{\\left(10 \\right)}}",
+   "variables": [
+    {
+     "symbol": "pH",
+     "name": "pH",
+     "unit": ""
+    },
+    {
+     "symbol": "pKa",
+     "name": "pKa",
+     "unit": ""
+    },
+    {
+     "symbol": "A",
+     "name": "conjugate base amount",
+     "unit": ""
+    },
+    {
+     "symbol": "HA",
+     "name": "acid amount",
+     "unit": ""
+    }
+   ],
+   "note": "A and HA in the same unit; only their ratio matters."
+  },
+  {
+   "id": "arrhenius",
+   "category": "Chemistry",
+   "name": "Arrhenius equation",
+   "equation": "k = A*exp(-Ea/(R*T))",
+   "latex": "k = A e^{- \\frac{Ea}{R T}}",
+   "variables": [
+    {
+     "symbol": "k",
+     "name": "rate constant",
+     "unit": "1/s"
+    },
+    {
+     "symbol": "A",
+     "name": "pre-exponential factor",
+     "unit": "1/s"
+    },
+    {
+     "symbol": "Ea",
+     "name": "activation energy",
+     "unit": "J/mol"
+    },
+    {
+     "symbol": "R",
+     "name": "gas constant",
+     "unit": "J/(mol*K)",
+     "constant": "R"
+    },
+    {
+     "symbol": "T",
+     "name": "temperature",
+     "unit": "K"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "nernst",
+   "category": "Chemistry",
+   "name": "Nernst equation",
+   "equation": "E = E0 - R*T/(n*F)*ln(Q)",
+   "latex": "E = E_{0} - \\frac{R T \\log{\\left(Q \\right)}}{F n}",
+   "variables": [
+    {
+     "symbol": "E",
+     "name": "potential",
+     "unit": "V"
+    },
+    {
+     "symbol": "E0",
+     "name": "standard potential",
+     "unit": "V"
+    },
+    {
+     "symbol": "R",
+     "name": "gas constant",
+     "unit": "J/(mol*K)",
+     "constant": "R"
+    },
+    {
+     "symbol": "T",
+     "name": "temperature",
+     "unit": "K"
+    },
+    {
+     "symbol": "n",
+     "name": "electrons transferred",
+     "unit": ""
+    },
+    {
+     "symbol": "F",
+     "name": "Faraday constant",
+     "unit": "C/mol",
+     "constant": "F"
+    },
+    {
+     "symbol": "Q",
+     "name": "reaction quotient",
+     "unit": ""
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "gibbs",
+   "category": "Chemistry",
+   "name": "Gibbs free energy",
+   "equation": "dG = dH - T*dS",
+   "latex": "dG = - T dS + dH",
+   "variables": [
+    {
+     "symbol": "dG",
+     "name": "Gibbs energy change",
+     "unit": "J/mol"
+    },
+    {
+     "symbol": "dH",
+     "name": "enthalpy change",
+     "unit": "J/mol"
+    },
+    {
+     "symbol": "T",
+     "name": "temperature",
+     "unit": "K"
+    },
+    {
+     "symbol": "dS",
+     "name": "entropy change",
+     "unit": "J/(mol*K)"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "firstorder",
+   "category": "Chemistry",
+   "name": "First-order decay",
+   "equation": "A = A0*exp(-k*t)",
+   "latex": "A = A_{0} e^{- k t}",
+   "variables": [
+    {
+     "symbol": "A",
+     "name": "amount",
+     "unit": ""
+    },
+    {
+     "symbol": "A0",
+     "name": "initial amount",
+     "unit": ""
+    },
+    {
+     "symbol": "k",
+     "name": "rate constant",
+     "unit": "1/s"
+    },
+    {
+     "symbol": "t",
+     "name": "time",
+     "unit": "s"
+    }
+   ],
+   "note": "A and A0 in the same unit."
+  },
+  {
+   "id": "halflife",
+   "category": "Chemistry",
+   "name": "First-order half-life",
+   "equation": "t12 = ln(2)/k",
+   "latex": "t_{12} = \\frac{\\log{\\left(2 \\right)}}{k}",
+   "variables": [
+    {
+     "symbol": "t12",
+     "name": "half-life",
+     "unit": "s"
+    },
+    {
+     "symbol": "k",
+     "name": "rate constant",
+     "unit": "1/s"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "beer",
+   "category": "Chemistry",
+   "name": "Beer–Lambert law",
+   "equation": "A = eps*l*c",
+   "latex": "A = c eps l",
+   "variables": [
+    {
+     "symbol": "A",
+     "name": "absorbance",
+     "unit": ""
+    },
+    {
+     "symbol": "eps",
+     "name": "molar absorptivity",
+     "unit": "L/(mol*cm)"
+    },
+    {
+     "symbol": "l",
+     "name": "path length",
+     "unit": "cm"
+    },
+    {
+     "symbol": "c",
+     "name": "concentration",
+     "unit": "mol/L"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "fpd",
+   "category": "Chemistry",
+   "name": "Freezing-point depression",
+   "equation": "dT = i*Kf*m",
+   "latex": "dT = Kf i m",
+   "variables": [
+    {
+     "symbol": "dT",
+     "name": "depression",
+     "unit": "K"
+    },
+    {
+     "symbol": "i",
+     "name": "van 't Hoff factor",
+     "unit": ""
+    },
+    {
+     "symbol": "Kf",
+     "name": "cryoscopic constant",
+     "unit": "K*kg/mol"
+    },
+    {
+     "symbol": "m",
+     "name": "molality",
+     "unit": "mol/kg"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "osmotic",
+   "category": "Chemistry",
+   "name": "Osmotic pressure",
+   "equation": "Pi = i*c*R*T",
+   "latex": "\\Pi = R T c i",
+   "variables": [
+    {
+     "symbol": "Pi",
+     "name": "osmotic pressure",
+     "unit": "Pa"
+    },
+    {
+     "symbol": "i",
+     "name": "van 't Hoff factor",
+     "unit": ""
+    },
+    {
+     "symbol": "c",
+     "name": "concentration",
+     "unit": "mol/m^3"
+    },
+    {
+     "symbol": "R",
+     "name": "gas constant",
+     "unit": "J/(mol*K)",
+     "constant": "R"
+    },
+    {
+     "symbol": "T",
+     "name": "temperature",
+     "unit": "K"
+    }
+   ],
+   "note": "Dilute solutions."
+  },
+  {
+   "id": "expgrowth",
+   "category": "Biology",
+   "name": "Exponential growth",
+   "equation": "N = N0*exp(r*t)",
+   "latex": "N = N_{0} e^{r t}",
+   "variables": [
+    {
+     "symbol": "N",
+     "name": "population",
+     "unit": ""
+    },
+    {
+     "symbol": "N0",
+     "name": "initial population",
+     "unit": ""
+    },
+    {
+     "symbol": "r",
+     "name": "growth rate",
+     "unit": "1/h"
+    },
+    {
+     "symbol": "t",
+     "name": "time",
+     "unit": "h"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "doubling",
+   "category": "Biology",
+   "name": "Doubling time",
+   "equation": "td = ln(2)/r",
+   "latex": "td = \\frac{\\log{\\left(2 \\right)}}{r}",
+   "variables": [
+    {
+     "symbol": "td",
+     "name": "doubling time",
+     "unit": "h"
+    },
+    {
+     "symbol": "r",
+     "name": "growth rate",
+     "unit": "1/h"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "logistic",
+   "category": "Biology",
+   "name": "Logistic growth",
+   "equation": "N = K/(1 + (K - N0)/N0*exp(-r*t))",
+   "latex": "N = \\frac{K}{1 + \\frac{\\left(K - N_{0}\\right) e^{- r t}}{N_{0}}}",
+   "variables": [
+    {
+     "symbol": "N",
+     "name": "population",
+     "unit": ""
+    },
+    {
+     "symbol": "K",
+     "name": "carrying capacity",
+     "unit": ""
+    },
+    {
+     "symbol": "N0",
+     "name": "initial population",
+     "unit": ""
+    },
+    {
+     "symbol": "r",
+     "name": "growth rate",
+     "unit": "1/h"
+    },
+    {
+     "symbol": "t",
+     "name": "time",
+     "unit": "h"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "mm",
+   "category": "Biology",
+   "name": "Michaelis–Menten",
+   "equation": "v = Vmax*S/(Km + S)",
+   "latex": "v = \\frac{S Vmax}{Km + S}",
+   "variables": [
+    {
+     "symbol": "v",
+     "name": "rate",
+     "unit": "mol/(L*s)"
+    },
+    {
+     "symbol": "Vmax",
+     "name": "maximum rate",
+     "unit": "mol/(L*s)"
+    },
+    {
+     "symbol": "S",
+     "name": "substrate",
+     "unit": "mol/L"
+    },
+    {
+     "symbol": "Km",
+     "name": "Michaelis constant",
+     "unit": "mol/L"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "hw",
+   "category": "Biology",
+   "name": "Hardy–Weinberg allele frequencies",
+   "equation": "p + q = 1",
+   "latex": "p + q = 1",
+   "variables": [
+    {
+     "symbol": "p",
+     "name": "dominant allele frequency",
+     "unit": ""
+    },
+    {
+     "symbol": "q",
+     "name": "recessive allele frequency",
+     "unit": ""
+    }
+   ],
+   "note": "Two alleles only."
+  },
+  {
+   "id": "bmi",
+   "category": "Biology",
+   "name": "Body mass index",
+   "equation": "BMI = m/h^2",
+   "latex": "BMI = \\frac{m}{h^{2}}",
+   "variables": [
+    {
+     "symbol": "BMI",
+     "name": "body mass index",
+     "unit": "kg/m^2"
+    },
+    {
+     "symbol": "m",
+     "name": "mass",
+     "unit": "kg"
+    },
+    {
+     "symbol": "h",
+     "name": "height",
+     "unit": "m"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "cardiac",
+   "category": "Biology",
+   "name": "Cardiac output",
+   "equation": "CO = HR*SV",
+   "latex": "CO = HR SV",
+   "variables": [
+    {
+     "symbol": "CO",
+     "name": "cardiac output",
+     "unit": "L/min"
+    },
+    {
+     "symbol": "HR",
+     "name": "heart rate",
+     "unit": "1/min"
+    },
+    {
+     "symbol": "SV",
+     "name": "stroke volume",
+     "unit": "L"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "pythag",
+   "category": "Mathematics",
+   "name": "Pythagorean theorem",
+   "equation": "c^2 = a^2 + b^2",
+   "latex": "c^{2} = a^{2} + b^{2}",
+   "variables": [
+    {
+     "symbol": "c",
+     "name": "hypotenuse",
+     "unit": "m"
+    },
+    {
+     "symbol": "a",
+     "name": "leg",
+     "unit": "m"
+    },
+    {
+     "symbol": "b",
+     "name": "leg",
+     "unit": "m"
+    }
+   ],
+   "note": "Solving for a leg uses only the positive length."
+  },
+  {
+   "id": "quadratic",
+   "category": "Mathematics",
+   "name": "Quadratic equation",
+   "equation": "a*x^2 + b*x + c = 0",
+   "latex": "a x^{2} + b x + c = 0",
+   "variables": [
+    {
+     "symbol": "a",
+     "name": "coefficient a",
+     "unit": ""
+    },
+    {
+     "symbol": "b",
+     "name": "coefficient b",
+     "unit": ""
+    },
+    {
+     "symbol": "c",
+     "name": "coefficient c",
+     "unit": ""
+    },
+    {
+     "symbol": "x",
+     "name": "root",
+     "unit": ""
+    }
+   ],
+   "note": "Both real roots are shown."
+  },
+  {
+   "id": "circle_area",
+   "category": "Mathematics",
+   "name": "Circle area",
+   "equation": "A = pi*r^2",
+   "latex": "A = \\pi r^{2}",
+   "variables": [
+    {
+     "symbol": "A",
+     "name": "area",
+     "unit": "m^2"
+    },
+    {
+     "symbol": "r",
+     "name": "radius",
+     "unit": "m"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "circle_circ",
+   "category": "Mathematics",
+   "name": "Circle circumference",
+   "equation": "C = 2*pi*r",
+   "latex": "C = 2 \\pi r",
+   "variables": [
+    {
+     "symbol": "C",
+     "name": "circumference",
+     "unit": "m"
+    },
+    {
+     "symbol": "r",
+     "name": "radius",
+     "unit": "m"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "sphere_vol",
+   "category": "Mathematics",
+   "name": "Sphere volume",
+   "equation": "V = 4/3*pi*r^3",
+   "latex": "V = \\frac{4 \\pi r^{3}}{3}",
+   "variables": [
+    {
+     "symbol": "V",
+     "name": "volume",
+     "unit": "m^3"
+    },
+    {
+     "symbol": "r",
+     "name": "radius",
+     "unit": "m"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "sphere_area",
+   "category": "Mathematics",
+   "name": "Sphere surface area",
+   "equation": "A = 4*pi*r^2",
+   "latex": "A = 4 \\pi r^{2}",
+   "variables": [
+    {
+     "symbol": "A",
+     "name": "surface area",
+     "unit": "m^2"
+    },
+    {
+     "symbol": "r",
+     "name": "radius",
+     "unit": "m"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "cyl_vol",
+   "category": "Mathematics",
+   "name": "Cylinder volume",
+   "equation": "V = pi*r^2*h",
+   "latex": "V = \\pi h r^{2}",
+   "variables": [
+    {
+     "symbol": "V",
+     "name": "volume",
+     "unit": "m^3"
+    },
+    {
+     "symbol": "r",
+     "name": "radius",
+     "unit": "m"
+    },
+    {
+     "symbol": "h",
+     "name": "height",
+     "unit": "m"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "cosines",
+   "category": "Mathematics",
+   "name": "Law of cosines",
+   "equation": "c^2 = a^2 + b^2 - 2*a*b*cos(C)",
+   "latex": "c^{2} = a^{2} - 2 a b \\cos{\\left(C \\right)} + b^{2}",
+   "variables": [
+    {
+     "symbol": "c",
+     "name": "side",
+     "unit": "m"
+    },
+    {
+     "symbol": "a",
+     "name": "side",
+     "unit": "m"
+    },
+    {
+     "symbol": "b",
+     "name": "side",
+     "unit": "m"
+    },
+    {
+     "symbol": "C",
+     "name": "angle opposite c",
+     "unit": "rad"
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "slope",
+   "category": "Mathematics",
+   "name": "Slope between two points",
+   "equation": "m = (y2 - y1)/(x2 - x1)",
+   "latex": "m = \\frac{- y_{1} + y_{2}}{- x_{1} + x_{2}}",
+   "variables": [
+    {
+     "symbol": "m",
+     "name": "slope",
+     "unit": ""
+    },
+    {
+     "symbol": "y1",
+     "name": "y₁",
+     "unit": ""
+    },
+    {
+     "symbol": "y2",
+     "name": "y₂",
+     "unit": ""
+    },
+    {
+     "symbol": "x1",
+     "name": "x₁",
+     "unit": ""
+    },
+    {
+     "symbol": "x2",
+     "name": "x₂",
+     "unit": ""
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "distance",
+   "category": "Mathematics",
+   "name": "Distance between two points",
+   "equation": "d = sqrt((x2 - x1)^2 + (y2 - y1)^2)",
+   "latex": "d = \\sqrt{\\left(- x_{1} + x_{2}\\right)^{2} + \\left(- y_{1} + y_{2}\\right)^{2}}",
+   "variables": [
+    {
+     "symbol": "d",
+     "name": "distance",
+     "unit": ""
+    },
+    {
+     "symbol": "x1",
+     "name": "x₁",
+     "unit": ""
+    },
+    {
+     "symbol": "y1",
+     "name": "y₁",
+     "unit": ""
+    },
+    {
+     "symbol": "x2",
+     "name": "x₂",
+     "unit": ""
+    },
+    {
+     "symbol": "y2",
+     "name": "y₂",
+     "unit": ""
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "arith_sum",
+   "category": "Mathematics",
+   "name": "Arithmetic series sum",
+   "equation": "S = n*(a1 + an)/2",
+   "latex": "S = \\frac{n \\left(a_{1} + an\\right)}{2}",
+   "variables": [
+    {
+     "symbol": "S",
+     "name": "sum",
+     "unit": ""
+    },
+    {
+     "symbol": "n",
+     "name": "number of terms",
+     "unit": ""
+    },
+    {
+     "symbol": "a1",
+     "name": "first term",
+     "unit": ""
+    },
+    {
+     "symbol": "an",
+     "name": "last term",
+     "unit": ""
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "geom_sum",
+   "category": "Mathematics",
+   "name": "Geometric series sum",
+   "equation": "S = a*(1 - r^n)/(1 - r)",
+   "latex": "S = \\frac{a \\left(1 - r^{n}\\right)}{1 - r}",
+   "variables": [
+    {
+     "symbol": "S",
+     "name": "sum",
+     "unit": ""
+    },
+    {
+     "symbol": "a",
+     "name": "first term",
+     "unit": ""
+    },
+    {
+     "symbol": "r",
+     "name": "common ratio",
+     "unit": ""
+    },
+    {
+     "symbol": "n",
+     "name": "number of terms",
+     "unit": ""
+    }
+   ],
+   "note": "r must not equal 1."
+  },
+  {
+   "id": "zscore",
+   "category": "Statistics",
+   "name": "z-score",
+   "equation": "z = (x - mu)/sigma",
+   "latex": "z = \\frac{- \\mu + x}{\\sigma}",
+   "variables": [
+    {
+     "symbol": "z",
+     "name": "z-score",
+     "unit": ""
+    },
+    {
+     "symbol": "x",
+     "name": "value",
+     "unit": ""
+    },
+    {
+     "symbol": "mu",
+     "name": "mean",
+     "unit": ""
+    },
+    {
+     "symbol": "sigma",
+     "name": "standard deviation",
+     "unit": ""
+    }
+   ],
+   "note": ""
+  },
+  {
+   "id": "sem",
+   "category": "Statistics",
+   "name": "Standard error of the mean",
+   "equation": "SE = s/sqrt(n)",
+   "latex": "SE = \\frac{s}{\\sqrt{n}}",
+   "variables": [
+    {
+     "symbol": "SE",
+     "name": "standard error",
+     "unit": ""
+    },
+    {
+     "symbol": "s",
+     "name": "sample standard deviation",
+     "unit": ""
+    },
+    {
+     "symbol": "n",
+     "name": "sample size",
+     "unit": ""
+    }
+   ],
+   "note": ""
+  }
+ ]
+}
