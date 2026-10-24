@@ -139,8 +139,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(self._static(path))
         except SciCalError as exc:
             self._send(self._error(exc))
-        except (BrokenPipeError, ConnectionResetError):
-            pass
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            # A browser may close its socket while a response is being written
+            # (WinError 10053 is ConnectionAbortedError). This is a transport
+            # cancellation, not a SciCal calculation failure. Never retry a
+            # response on a stream whose framing may already be incomplete.
+            self.close_connection = True
         except Exception:  # noqa: BLE001 - the person gets a plain message; the trace goes to the console
             traceback.print_exc(file=sys.stderr)
             try:
