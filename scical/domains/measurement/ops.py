@@ -485,5 +485,7 @@ def constants(params: dict, s: Settings) -> dict:
     return {"ok": True, "constants": items, "meta": meta, "count": len(items)}
 
 
-OPS = {"sig_figs": sig_figs, "uncertainty": uncertainty, "repeated": repeated, "percent_error": percent_error, "calibration": calibration,
+from .uncertainty_lab import formula_uncertainty, uncertainty_budget
+
+OPS = {"uncertainty_budget": uncertainty_budget, "formula_uncertainty": formula_uncertainty, "sig_figs": sig_figs, "uncertainty": uncertainty, "repeated": repeated, "percent_error": percent_error, "calibration": calibration,
        "convert": convert_units, "dimensions": dimensions, "units": unit_catalog, "constants": constants}
