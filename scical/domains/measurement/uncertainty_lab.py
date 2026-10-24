@@ -5,6 +5,7 @@ Uses SciCal's safe expression parser and its existing numerical result format.
 """
 from __future__ import annotations
 
+import json
 import math
 import re
 from typing import Any
@@ -76,8 +77,15 @@ def _components(params: dict) -> list[dict[str, Any]]:
 
 def _covariance(standard: list[float], correlations: Any) -> np.ndarray:
     n = len(standard)
-    if correlations in (None, ""):
+    if correlations is None or correlations == "":
         return np.diag(np.square(standard))
+    if isinstance(correlations, str):
+        if len(correlations) > 4000:
+            raise C.field_error("correlations", "Correlation matrix is too large")
+        try:
+            correlations = json.loads(correlations)
+        except json.JSONDecodeError as exc:
+            raise C.field_error("correlations", "Enter a JSON array of matrix rows") from exc
     try:
         r = np.asarray(correlations, dtype=float)
     except (TypeError, ValueError) as exc:
