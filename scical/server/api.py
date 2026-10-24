@@ -242,3 +242,24 @@ def assist_crosscheck(app: SciCalApp, req: Request) -> Response:
     ours = {"mean": res["mean"]["value"], "standardDeviation": res["standardDeviation"]["value"], "median": res["median"]["value"]}
     nums = [float(v) for v in values] if isinstance(values, list) else []
     return ok(app.assistant.crosscheck("statistics", {"values": nums}, ours))
+
+
+@route("POST", "/api/assist/uncertainty-crosscheck")
+def uncertainty_crosscheck(app: SciCalApp, req: Request) -> Response:
+    """Consent-gated STEM calculation on a validated, independent-input budget."""
+    from ..domains.measurement.uncertainty_lab import _components
+    b = req.json(SMALL)
+    params = b.get("params")
+    if not isinstance(params, dict):
+        raise BadRequest("'params' must be an uncertainty budget object")
+    res = app.compute({"kind": "domain", "domain": "measurement",
+                       "op": "uncertainty_budget", "params": params, "settings": {}}, None)
+    if not res.get("ok"):
+        return raw(res)
+    if res.get("correlationsPresent"):
+        raise BadRequest("Correlated budgets are not supported by this independent-input cross-check")
+    parts = _components(params)
+    sid, allowed = _allowed(app, b.get("sessionId"))
+    normalized = [{"standard": item["standard"], "sensitivity": item["sensitivity"]} for item in parts]
+    value = float(res["combinedUncertainty"]["value"])
+    return ok(app.assistant.verify_uncertainty_budget(sid, allowed, normalized, value))
