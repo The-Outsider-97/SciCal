@@ -15,7 +15,9 @@ This is the honest state of SciCal: what was built, how it was checked, what cou
 | Themes: light, dark, high contrast, follows the system; text size; reduced motion | Done |
 | Keyboard use, labelled controls, live regions for results and errors, visible focus | Done; checked by hand and by the browser tests, not by a screen-reader audit |
 | Optional SLAI assistant | Partly verified, see §4 |
-| 3D plotting | **Not built** (deliberately deferred; 2D is complete) |
+| 3D plotting: surfaces, parametric surfaces, space curves, point sets; rotate/pan/zoom, layers, sliders, transparent PNG | Done; sampling covered by unit tests, drawing checked in a real browser (light, dark, narrow) |
+| Save as SGEO / SDRW through SLAI's writers (3D model; derived wireframe and contour drawings; 2D drawing) | Done; round-trip tests re-open each file with SLAI's reader and compare coordinates, topology, unit, ids, metadata, material and provenance with stated tolerances; clicked through in a real browser |
+| Finance (24 calculators) and Constants (85) | Done, tested; see the v2.4 test results |
 | Central SLAI launcher registration | **Not built**: SLAI has no registry to register with. Start with `python -m scical` or `run_scical.py` |
 
 ## 2. Security model
@@ -81,6 +83,9 @@ SciCal's statistics cross-check (the *Cross-check* button on repeated measuremen
 * Calculations are capped (see §2); very large factorials, powers and matrices are refused with a message instead of running for minutes.
 * Plain-English input is rule-based and offline: it recognises common phrasings and offers proposals; it does not understand arbitrary sentences.
 * SLDC export and hand-off require a SLAI checkout; without one the other four export formats still work.
-* No 3D plots. No computer-algebra-style assumptions system (`assume(x>0)`).
+* 3D: no implicit surfaces `F(x, y, z) = 0`; the painter's algorithm can mis-order interpenetrating surfaces; the jump heuristic may add a vertical riser to a deliberately stepped function; more than 160 samples per axis, 12 layers or 25 600 grid vertices per surface are refused.
+* SGEO has no normals or per-vertex colour; point sets above 5 000 points are not saved as SGEO; an SDRW wireframe is orthographic whatever the screen showed and does not remove hidden lines; an SDRW contour at a level the surface sits exactly on (z = 0 of sin x cos y) can zig-zag by up to one grid cell; inequality shading and some layer kinds are not drawn in a 2D SDRW and are listed as left out.
+* SGEO/SDRW strict validation needs `jsonschema` 4 or newer; with an older one SLAI validates structurally only and the dialog names the mode it used.
+* No computer-algebra-style assumptions system (`assume(x>0)`).
 * The browser tests ran on Chromium only.
 * Screenshots in `docs/screenshots/` are real captures of the running application (1440×1300 for the desktop shots, 390×844 for mobile).

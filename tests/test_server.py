@@ -189,7 +189,7 @@ class ServerTests(unittest.TestCase):
 
     def test_forms_catalogue(self):
         status, r, _ = self.call("GET", "/api/forms")
-        self.assertEqual(sorted(r["data"]["domains"]), ["biology", "chemistry", "formulas", "measurement"])
+        self.assertEqual(sorted(r["data"]["domains"]), ["biology", "chemistry", "finance", "formulas", "measurement"])
 
     # ------------------------------------------------------------------ worksheets
     def test_worksheet_life_cycle(self):
@@ -251,6 +251,82 @@ class ServerTests(unittest.TestCase):
                     self.fail(f"spreadsheet formula injection in {cell!r}")
         status, _, _ = self.raw("POST", "/api/export", {"sessionId": sid, "format": "exe"}, {"Cookie": self.cookie, **MARK})
         self.assertEqual(status, 400)
+
+    def test_sldc_export_keeps_formulas_typeset_not_as_typed_text(self):
+        import io
+        import zipfile
+        _, r, _ = self.call("POST", "/api/sessions", {"name": "Typeset me"})
+        sid = r["data"]["id"]
+        frac = {"ok": True, "inputLatex": "7 \\cdot \\sqrt{\\frac{5}{8}}", "value": {"text": "7sqrt(10) / 4", "latex": "\\frac{7 \\sqrt{10}}{4}"}}
+        self.call("PUT", f"/api/sessions/{sid}", {"entries": [
+            {"kind": "calc", "input": "7*sqrt((5/8))", "ok": True, "result": frac},
+            {"kind": "calc", "input": "1/0", "ok": False, "result": {"ok": False, "error": {"message": "Division by zero"}}},
+            {"kind": "calc", "input": "plain", "ok": True, "result": {"ok": True, "value": {"text": "5"}}},
+            {"kind": "note", "text": "A note"}]})
+        status, _, data = self.raw("POST", "/api/export", {"sessionId": sid, "format": "sldc"}, {"Cookie": self.cookie, **MARK})
+        if status == 422:
+            self.skipTest("the SLAI checkout (src/utils/sldc.py) was not found")
+        self.assertEqual(status, 200)
+        z = zipfile.ZipFile(io.BytesIO(data))
+        doc = json.loads(z.read("document.json"))
+        blocks = doc["blocks"]
+        eqs = [b for b in blocks if b["type"] == "equation"]
+        self.assertEqual([(b["equation"]["source"], b["equation"]["align"]) for b in eqs],
+                         [(frac["inputLatex"], "left"), (frac["value"]["latex"], "right")])
+        self.assertTrue(all(b["text"] == "" and b["equation"]["syntax"] == "latex" for b in eqs))
+        self.assertEqual(eqs[0]["extensions"]["slai.scical"]["input"], "7*sqrt((5/8))")        # what was typed is kept beside the equation
+        # lines without LaTeX stay readable text: the error, the line that has no typeset form, and the note
+        texts = [b["text"] for b in blocks if b["type"] != "equation"]
+        self.assertIn("1/0", texts)
+        self.assertIn("= Error: Division by zero", texts)
+        self.assertIn("plain", texts)
+        self.assertIn("= 5", texts)
+        self.assertIn("A note", texts)
+        self.assertEqual(json.loads(z.read("manifest.json"))["version"], "1.1.0")
+
+    def test_graph_picture_goes_into_the_sldc_as_a_figure_with_its_functions(self):
+        import base64
+        import io
+        import struct
+        import zipfile
+        import zlib
+
+        def png(w=160, h=100):
+            raw = b"".join(b"\x00" + b"\xb8\x9b\x00\x80" * w for _ in range(h))
+            def ch(k, b): return struct.pack(">I", len(b)) + k + b + struct.pack(">I", zlib.crc32(k + b) & 0xFFFFFFFF)
+            return b"\x89PNG\r\n\x1a\n" + ch(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)) + ch(b"IDAT", zlib.compress(raw)) + ch(b"IEND", b"")
+
+        _, r, _ = self.call("POST", "/api/sessions", {"name": "Graphs"})
+        sid = r["data"]["id"]
+        layers = [{"id": f"L{i}", "type": "auto", "expr": e, "color": c} for i, (e, c) in enumerate([("x", "#b89b00"), ("x^2", "#2f7dd1"), ("sin(x)", "#118833")], 1)]
+        spec = {"layers": layers, "viewport": {"xmin": -10, "xmax": 10, "ymin": -6, "ymax": 6}, "params": []}
+        figure = {"mediaType": "image/png", "data": base64.b64encode(png()).decode(), "transparent": True,
+                  "series": [{"id": "L1", "color": "#b89b00", "dash": "solid"}, {"id": "L2", "color": "#2f7dd1", "dash": "dash"}, {"id": "L3", "color": "#118833", "dash": "dot"}]}
+        status, _, _ = self.call("PUT", f"/api/sessions/{sid}", {"entries": [
+            {"kind": "graph", "workspace": "graph", "title": "Graph", "spec": spec, "summary": {"ok": True, "headline": "Graph of x; x^2; sin(x)"}, "ok": True, "figure": figure},
+            {"kind": "graph", "workspace": "graph", "title": "Older graph", "spec": spec, "summary": {"ok": True, "headline": "Graph of x"}, "ok": True}]})
+        self.assertEqual(status, 200)
+        status, _, data = self.raw("POST", "/api/export", {"sessionId": sid, "format": "sldc"}, {"Cookie": self.cookie, **MARK})
+        if status == 422:
+            self.skipTest("the SLAI checkout (src/utils/sldc.py) was not found")
+        self.assertEqual(status, 200)
+        z = zipfile.ZipFile(io.BytesIO(data))
+        doc = json.loads(z.read("document.json"))
+        figs = [b for b in doc["blocks"] if b["type"] == "figure"]
+        self.assertEqual(len(figs), 1)
+        record = figs[0]["extensions"]["slai.scical"]["graph"]
+        self.assertEqual([(s["expression"], s["dash"], s["color"]) for s in record["series"]], [("x", "solid", "#b89b00"), ("x^2", "dash", "#2f7dd1"), ("sin(x)", "dot", "#118833")])
+        names = [n for n in z.namelist() if n.startswith("assets/")]
+        self.assertEqual(len(names), 1)
+        self.assertEqual(z.read(names[0])[:8], b"\x89PNG\r\n\x1a\n")
+        older = next(b for b in doc["blocks"] if b["type"] == "paragraph" and "Older graph" in b["text"])
+        self.assertIsNone(older["extensions"]["slai.scical"]["graph"]["image"])
+        # a hostile picture is refused with a plain error, and nothing of it is stored
+        bad = dict(figure, data=base64.b64encode(b"<svg onload=alert(1)>").decode())
+        status, r, _ = self.call("PUT", f"/api/sessions/{sid}", {"entries": [{"kind": "graph", "spec": spec, "figure": bad}]})
+        self.assertEqual(status, 400)
+        status, r, _ = self.call("GET", f"/api/sessions/{sid}")
+        self.assertEqual(len(r["data"]["entries"]), 2)
 
     def test_crosscheck_answers_in_the_shape_the_client_reads(self):
         status, r, _ = self.call("POST", "/api/assist/crosscheck", {"values": [1.0, 2.0, 3.0, 4.5]})

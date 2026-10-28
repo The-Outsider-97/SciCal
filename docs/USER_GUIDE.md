@@ -63,9 +63,40 @@ A library of scientific formulas with variables, units and dimensions. **Solve f
 
 ## Worksheets, search and export
 
-Click the worksheet name to create, open, rename, delete, import and export worksheets. The search button looks through all of them. **Export** offers Markdown, plain text, CSV and JSON as downloads, and SLDC when SciCal can find a SLAI installation. **Send to another SLAI application** hands the worksheet to Reader or Documaster when they are running. Cells that start with `=`, `+`, `-` or `@` are neutralised in CSV so a spreadsheet cannot run them as formulas.
+Click the worksheet name to create, open, rename, delete, import and export worksheets. The search button looks through all of them. **Export** offers Markdown, plain text, CSV and JSON as downloads, and SLDC when SciCal can find a SLAI installation. In the SLDC file each calculation is stored as typeset equations (LaTeX), exactly as SciCal shows it, together with the text you typed, so Reader draws the formulas instead of showing `7*sqrt((5/8))`. **Send to another SLAI application** hands the worksheet to Reader or Documaster when they are running. Cells that start with `=`, `+`, `-` or `@` are neutralised in CSV so a spreadsheet cannot run them as formulas.
 
 ![Worksheets](screenshots/worksheets.png)
+
+## 3D graphing
+
+Graphing has a **2D | 3D** switch. In 3D, each layer is one of: a surface `z = f(x, y)` (type `sin(x)*cos(y)` or `z = x^2 - y^2`), a parametric surface `(x(u, v), y(u, v), z(u, v))`, a space curve `(x(t), y(t), z(t))`, or a set of points `x y z` (one per line).
+
+* **Move:** drag to rotate, shift-drag or right-drag to move, scroll or pinch to zoom, double-click to reset; arrow keys, `+`, `-` and `0` work when the plot has focus. Click a point to mark it and read its coordinates.
+* **Layers:** colour, opacity, wireframe, and colour by height; a letter that has no value (the `a` in `a*sin(x)*cos(y)`) becomes a slider.
+* **Domain and sampling:** x and y ranges, up to 160 samples per axis, and an optional z window that cuts off very tall parts. Where a formula is not a real number (a pole, the square root of a negative) the surface is left open: it is shown as a gap and never bridged.
+* **View:** perspective or orthographic, proportions (automatic keeps a sphere round; *fit to box* stretches; *equal scale*), axes, grid, legend, and Isometric/Top/Front/Side presets.
+* **Save PNG** makes a picture with a transparent background. **Add to worksheet** keeps the scene (formulas, sliders, camera) and its picture, so SReader can show it with its formulas.
+
+### Saving as SGEO or SDRW
+
+Under the plot, **Save as** writes a file with SLAI's own writers, checks it with SLAI's validator and opens it again before reporting success. The dialog that follows says what is in the file, what was left out and why, and what to know.
+
+| Button | You get | Is it the model? |
+| --- | --- | --- |
+| **SGEO model** (3D) | meshes for surfaces, curves for curves, points for points; each formula, domain and the sampling are stored beside the geometry, with a provenance claim | The sampled approximation of the formulas (float64), not the exact surface |
+| **SDRW wireframe** (3D) | a 2D drawing of the grid lines from the current camera, orthographic, hidden lines not removed | No: derived and lossy, labelled as such in the drawing and its metadata |
+| **SDRW contours** (3D) | a contour map of explicit surfaces `z = f(x, y)` | No: derived and lossy; other layer kinds are listed as left out |
+| **SDRW drawing** (2D) | axes, grid and every curve as polylines, one drawing layer per graph layer, in the layer's colour | The curves as sampled for the current view |
+
+SGEO stores no normals and no per-vertex colour, so a surface coloured by height is saved in its base colour (the z range is kept in its metadata). A graph has no unit of its own: the **unit** choice says what one graph unit is in the file. A saved file is never overwritten; a second save gets `-2`, `-3`, and so on. A copy is kept in the SciCal output folder as well as being downloaded.
+
+## Finance
+
+The Finance workspace has 24 calculators in groups: interest and rates, annuities and loans (with amortisation schedules and loan comparison), investment appraisal (NPV, IRR, discounted cash flow, payback, ROI, CAGR), inflation, percentage change, elasticity, break-even and profit, supply and demand (equilibrium, surpluses, tax incidence), growth and trend, and sensitivity tables. Each result shows its formula, the assumptions it made, the working, and exact values where they exist. **Open in Graphing** (on results that have a curve) carries the formula and its sliders into the Graphing workspace.
+
+## Constants
+
+The Constants page lists 85 physical constants with their symbol, value, uncertainty, unit and source (CODATA 2022 where it applies). Click one to insert it into a calculation, or convert it to another unit. There is one store of constants; Finance preferences are separate.
 
 ## Settings
 
