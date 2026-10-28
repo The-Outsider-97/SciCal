@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ..errors import BadRequest, NotFound
-from ..services import exports
+from ..services import exports, spatial
 from ..services.interpret import interpret
 from ..services.sessions import check_id, context_lines
 from .app import SciCalApp
@@ -86,10 +86,50 @@ def domain(app: SciCalApp, req: Request) -> Response:
 def graph(app: SciCalApp, req: Request) -> Response:
     b = req.json(SMALL)
     op = b.get("op", "render")
-    if op not in ("render", "analyze"):
-        raise BadRequest("'op' must be render or analyze")
+    if op not in ("render", "analyze", "render3d"):
+        raise BadRequest("'op' must be render, analyze or render3d")
     task = {"kind": "graph", "op": op, "spec": b.get("spec"), "settings": _settings(b), "context": b.get("context")}
-    return raw(app.compute(task, _job(b), timeout=min(app.settings.task_timeout_s, 20)))
+    return raw(app.compute(task, _job(b), timeout=min(app.settings.task_timeout_s, 25 if op == "render3d" else 20)))
+
+
+@route("POST", "/api/graph/export")
+def graph_export(app: SciCalApp, req: Request) -> Response:
+    """Save a graph with SLAI's own writers: a 3D scene as SGEO, a 2D graph as SDRW, or a 3D scene as a derived SDRW drawing.
+
+    The scene is sampled again here at full precision (in the worker pool, with the same limits as drawing it), the document is built in this process
+    with ``src.utils.sgeo`` / ``src.utils.sdrw``, saved atomically into the output folder, opened again and validated. The answer says what was
+    verified, what was left out and why, and carries the file itself so the browser can save it."""
+    b = req.json(SMALL)
+    fmt = b.get("format")
+    if fmt not in ("sgeo", "sdrw"):
+        raise BadRequest("'format' must be sgeo or sdrw")
+    source = b.get("source", "3d" if fmt == "sgeo" else "2d")
+    if source not in ("2d", "3d", "3d-wireframe", "3d-contours"):
+        raise BadRequest("'source' must be 2d, 3d, 3d-wireframe or 3d-contours")
+    if (fmt == "sgeo") != (source == "3d"):
+        raise BadRequest("SGEO saves a 3D scene (source 3d); SDRW saves a 2D graph or a derived drawing (source 2d, 3d-wireframe or 3d-contours)")
+    spec = b.get("spec")
+    if not isinstance(spec, dict):
+        raise BadRequest("'spec' must be an object")
+    name = b.get("name") if isinstance(b.get("name"), str) else ""
+    unit = b.get("unit") if isinstance(b.get("unit"), str) else ("m" if fmt == "sgeo" else "mm")
+    colors = b.get("colors") if isinstance(b.get("colors"), dict) else {}
+    colors = {str(k)[:64]: v for k, v in list(colors.items())[:64] if isinstance(v, str) and len(v) <= 7}
+    settings, context, job = _settings(b), b.get("context"), _job(b)
+    op = "render" if source == "2d" else "sample3d"
+    res = app.compute({"kind": "graph", "op": op, "spec": spec, "settings": settings, "context": context}, job, timeout=min(app.settings.task_timeout_s, 25))
+    if not res.get("ok"):
+        return raw(res)
+    out_dir = app.settings.output_dir
+    if fmt == "sgeo":
+        out = spatial.export_sgeo(app.link, out_dir, res, name=name, unit=unit)
+    elif source == "2d":
+        out = spatial.export_sdrw(app.link, out_dir, lambda m: spatial.build_sdrw_graph(m, res, spec, colors, name=name, unit=unit), name=name, suffix="2d")
+    else:
+        view = b.get("view") if isinstance(b.get("view"), dict) else {}
+        mode = "wireframe" if source == "3d-wireframe" else "contours"
+        out = spatial.export_sdrw(app.link, out_dir, lambda m: spatial.build_sdrw_projection(m, res, view, colors, name=name, unit=unit, mode=mode), name=name, suffix=mode)
+    return raw(out)
 
 
 @route("POST", "/api/cancel")

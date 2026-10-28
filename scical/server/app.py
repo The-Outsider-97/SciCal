@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import os
 import sys
 import time
@@ -20,8 +21,11 @@ from .config import Settings
 PREF_SCHEMA: dict[str, tuple[type, Any]] = {
     "theme": (str, ("system", "light", "dark", "contrast")), "angle": (str, ("rad", "deg", "grad")), "digits": (int, (1, 100)),
     "notation": (str, ("auto", "fixed", "sci", "eng")), "result": (str, ("auto", "exact", "approx")), "thousands": (bool, None),
-    "units": (bool, None), "fontScale": (float, (0.8, 1.6)), "reducedMotion": (bool, None), "workspace": (str, ("math", "chemistry", "biology", "measurement")),
+    "units": (bool, None), "fontScale": (float, (0.8, 1.6)), "reducedMotion": (bool, None), "workspace": (str, ("math", "chemistry", "biology", "measurement", "finance", "constants")),
     "lastSession": (str, None), "complex": (bool, None), "keypad": (str, ("basic", "scientific", "functions", "units")),
+    # The person's own financial assumptions (Constants > Financial parameters). They are defaults for the Finance forms, not constants, and
+    # never come from market data. Rates are in percent.
+    "finCurrency": (str, None), "finPlaces": (int, (0, 8)), "finDiscountRate": (float, (-50.0, 1000.0)), "finInflation": (float, (-50.0, 1000.0)),
 }
 
 
@@ -58,6 +62,8 @@ class Prefs:
                 ok = (allowed[0] <= v <= allowed[1]) if typ in (int, float) else v in allowed
             if ok and typ is str and allowed is None:
                 ok = len(v) <= 64
+            if ok and k == "finCurrency":
+                ok = re.fullmatch(r"|[A-Z]{3}", v) is not None
             if not ok:
                 if strict:
                     raise BadRequest(f"Preference '{k}' has an invalid value")
@@ -66,7 +72,9 @@ class Prefs:
         return out
 
     def update(self, raw: dict[str, Any]) -> dict[str, Any]:
-        self.data.update(self.clean(raw))
+        for k in [k for k, v in raw.items() if v is None and k in PREF_SCHEMA]:     # null removes a stored preference
+            self.data.pop(k, None)
+        self.data.update(self.clean({k: v for k, v in raw.items() if v is not None or k not in PREF_SCHEMA}))
         atomic_write_text(self.path, json.dumps(self.data))
         return self.data
 

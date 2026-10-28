@@ -17,11 +17,12 @@ from typing import Any
 
 from ..errors import BadRequest, LimitExceeded, NotFound
 from .fsutil import atomic_write
+from .figures import clean_figure
 
 SCHEMA = "scical-session/1"
 ID = re.compile(r"^[0-9a-f]{16}$")
 ENTRY_KINDS = ("calc", "domain", "graph", "formula", "note")
-WORKSPACES = ("math", "chemistry", "biology", "measurement", "graph", "formula")
+WORKSPACES = ("math", "chemistry", "biology", "measurement", "graph", "formula", "finance")
 MAX_NAME = 120
 MAX_INPUT = 10_000
 MAX_RESULT_BYTES = 200_000
@@ -71,6 +72,10 @@ def clean_entry(e: Any, index: int) -> dict[str, Any]:
                     continue                                   # a huge result is recomputed on demand, not stored
                 raise LimitExceeded(f"Entry {index + 1}: '{key}' is too large")
             out[key] = e[key]
+    if e.get("figure") is not None:
+        if kind != "graph":
+            raise BadRequest(f"Entry {index + 1}: only a graph has a picture")
+        out["figure"] = clean_figure(e["figure"], index)          # the picture the graph was drawn as (PNG), kept so exports show what the person saw
     if "defines" in e:
         d = e["defines"]
         if not (isinstance(d, list) and len(d) <= 8 and all(isinstance(x, str) and len(x) <= 40 for x in d)):

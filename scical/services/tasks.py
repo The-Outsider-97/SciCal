@@ -26,10 +26,12 @@ def _jsonable(x: Any) -> Any:
 
 def _domains() -> dict[str, dict]:
     from ..domains.biology import OPS as bio
+    from ..domains.constants import OPS as constants
     from ..domains.chemistry import OPS as chem
     from ..domains.formulas import OPS as formulas
+    from ..domains.finance import OPS as finance
     from ..domains.measurement import OPS as meas
-    return {"chemistry": chem, "biology": bio, "measurement": meas, "formulas": formulas}
+    return {"chemistry": chem, "biology": bio, "measurement": meas, "formulas": formulas, "finance": finance, "constants": constants}
 
 
 def make_context(settings: Any, replay: Any) -> Any:
@@ -74,12 +76,20 @@ def run(task: dict[str, Any]) -> dict[str, Any]:
                 raise BadRequest("'params' must be an object")
             result = fn(params, settings)
         else:                                                   # graph
-            from ..core.graphing import plot
+            from ..core.graphing import plot, space
             spec = task.get("spec")
             if not isinstance(spec, dict):
                 raise BadRequest("'spec' must be an object")
             ctx = make_context(settings, task.get("context"))
-            result = plot.analyze(ctx, spec) if task.get("op") == "analyze" else plot.render(ctx, spec)
+            op = task.get("op")
+            if op == "analyze":
+                result = plot.analyze(ctx, spec)
+            elif op == "render3d":
+                result = space.render(ctx, spec)
+            elif op == "sample3d":                              # full-precision geometry for the SGEO/SDRW exporters (internal, not on /api/graph)
+                result = space.sample_export(ctx, spec)
+            else:
+                result = plot.render(ctx, spec)
             if isinstance(result, dict) and "ok" not in result:
                 result = {"ok": True, **result}
     except SciCalError as exc:

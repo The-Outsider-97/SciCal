@@ -94,6 +94,32 @@ class SlaiLink:
         except ImportError as exc:
             raise DependencyMissing("The SLDC module (src/utils/sldc.py) could not be imported.", details={"import_error": str(exc)}) from exc
 
+    def _facade(self, module: str, what: str) -> ModuleType:
+        if self.root is None:
+            raise DependencyMissing(f"The SLAI checkout was not found, so {what} export is unavailable. Start SciCal inside the SLAI folder, set SLAI_ROOT, or pass --slai-root.")
+        try:
+            return importlib.import_module(f"src.utils.{module}")
+        except ImportError as exc:
+            raise DependencyMissing(f"The {what} module (src/utils/{module}.py) could not be imported.", details={"import_error": str(exc)}) from exc
+
+    def sgeo(self) -> ModuleType:
+        """SLAI's SGEO facade (3D models). SciCal builds ``SGEODocument`` objects with it and saves them with its writer; it has no serializer of its own."""
+        return self._facade("sgeo", "SGEO")
+
+    def sdrw(self) -> ModuleType:
+        """SLAI's SDRW facade (2D drawings), used the same way."""
+        return self._facade("sdrw", "SDRW")
+
+    def spatial_info(self) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        for key, getter in (("sgeo", self.sgeo), ("sdrw", self.sdrw)):
+            try:
+                m = getter()
+                out[key] = {"available": True, "formatVersion": getattr(m, "FORMAT_VERSION", None), "schema": getattr(m, "SCHEMA", None)}
+            except DependencyMissing as exc:
+                out[key] = {"available": False, "reason": exc.message}
+        return out
+
     def sldc_info(self) -> dict[str, Any]:
         try:
             m = self.sldc()
@@ -167,7 +193,7 @@ class SlaiLink:
         return importlib.import_module(f"{ALIAS}.{dotted}")
 
     def status(self) -> dict[str, Any]:
-        return {"slaiRoot": str(self.root) if self.root else None, "sldc": self.sldc_info(), "agentGateway": {"available": self.documaster_ok, "reason": self.documaster_reason},
+        return {"slaiRoot": str(self.root) if self.root else None, "sldc": self.sldc_info(), "spatial": self.spatial_info(), "agentGateway": {"available": self.documaster_ok, "reason": self.documaster_reason},
                 "apps": self.targets()}
 
     def close(self) -> None:

@@ -443,9 +443,14 @@ def f_oct(ev, n):
     return Text(("-" if k < 0 else "") + "0o" + _to_base(abs(k), 8), kind="oct")
 
 
-@handler("const")
-def f_const(ev, sym):
-    c = get_constant(sym.name if isinstance(sym, sp.Symbol) else str(sym))
+@handler("const", raw=True)
+def f_const(ev, node, series):
+    """const(name): the argument is a name, never evaluated (so const(h) is Planck's constant, not the hour)."""
+    if len(node.args) != 1 or not isinstance(node.args[0], A.Var):
+        raise BadRequest("const() takes one constant name, for example const(c) or const(NA)")
+    c = get_constant(node.args[0].name)
+    if c.edition and c.kind != "mathematical":
+        ev.warn(f"const({c.key}) = {c.name}: {c.edition}" + ("" if c.exact else " (measured, has an uncertainty)"))
     return c.quantity()
 
 

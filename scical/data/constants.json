@@ -1,10 +1,40 @@
 {
  "meta": {
-  "name": "CODATA recommended values of the fundamental physical constants",
+  "name": "SciCal constants library",
   "version": "CODATA 2022",
   "source": "NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025)",
   "transcribed_from": "scipy.constants (scipy 1.18.1)",
-  "note": "Constants listed with no uncertainty are exact. Values are decimal strings; SciCal reads them as exact decimals."
+  "verified_current": "CODATA 2022 (NIST release 9.0, 9 May 2024) is the newest edition listed at pml.nist.gov/cuu/Reference/versioncon.shtml; checked 2026-10-28.",
+  "note": "Constants listed with no uncertainty are exact. Values are decimal strings; SciCal reads them as exact decimals. Changing an entry changes every calculation that uses it, so tests/test_constants.py pins the values: an update must be deliberate.",
+  "categories": {
+   "mathematical": {
+    "title": "Mathematical",
+    "description": "Defined by mathematics, not measured. Irrational numbers are shown to 50 digits."
+   },
+   "physical": {
+    "title": "Physical",
+    "description": "Fundamental physical constants: the SI defining constants (exact) and measured CODATA 2022 values with their standard uncertainties."
+   },
+   "chemical": {
+    "title": "Chemical",
+    "description": "Constants used in chemistry and thermodynamics."
+   },
+   "astronomical": {
+    "title": "Astronomical",
+    "description": "IAU definitions and nominal values (exact conventions) are kept apart from derived, measured-dependent quantities."
+   },
+   "engineering": {
+    "title": "Engineering reference",
+    "description": "Standard gravity, standard atmosphere and exact unit-conversion factors. No material properties: those depend on the material and conditions."
+   }
+  },
+  "editions": {
+   "CODATA 2022": "Fundamental physical constants",
+   "IAU 2012 B2": "Astronomical unit",
+   "IAU 2015 B3": "Nominal solar and planetary conversion constants",
+   "NIST SP 811": "Conversion factors",
+   "ISO 2533:1975": "Standard atmosphere"
+  }
  },
  "constants": {
   "c": {
@@ -14,6 +44,18 @@
    "uncertainty": null,
    "exact": true,
    "unit": "m/s",
+   "category": "physical",
+   "kind": "exact",
+   "description": "Speed of light in vacuum. One of the seven SI defining constants; it defines the metre.",
+   "applications": [
+    "massenergy",
+    "wave",
+    "debroglie"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "Exact by definition (an SI defining constant or an exact product of them).",
+   "sigfigs": 9,
    "codata_name": "speed of light in vacuum"
   },
   "h": {
@@ -23,17 +65,38 @@
    "uncertainty": null,
    "exact": true,
    "unit": "J*s",
+   "category": "physical",
+   "kind": "exact",
+   "description": "Planck constant, relating a photon's energy to its frequency. An SI defining constant; it defines the kilogram.",
+   "applications": [
+    "photon_f",
+    "photon_l",
+    "debroglie"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "Exact by definition (an SI defining constant or an exact product of them).",
+   "sigfigs": 9,
    "codata_name": "Planck constant"
   },
   "hbar": {
    "name": "reduced Planck constant",
    "symbol": "ħ",
-   "value": "1.0545718176461565e-34",
+   "value": "1.054571817646156391262428003302280744723e-34",
    "uncertainty": null,
-   "exact": false,
+   "exact": true,
    "unit": "J*s",
-   "codata_name": "reduced Planck constant",
-   "note": "Fixed exactly by the SI defining constants, but not a finite decimal; the value is rounded to 17 digits."
+   "category": "physical",
+   "kind": "exact_derived",
+   "description": "Reduced Planck constant, h/2π.",
+   "applications": [
+    "debroglie"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "An exact consequence of the SI defining constants; the number is not a finite decimal, so it is stored to 40 significant digits.",
+   "sigfigs": 40,
+   "codata_name": "reduced Planck constant"
   },
   "e": {
    "name": "elementary charge",
@@ -42,6 +105,17 @@
    "uncertainty": null,
    "exact": true,
    "unit": "C",
+   "category": "physical",
+   "kind": "exact",
+   "description": "Elementary charge, the charge of a proton. An SI defining constant.",
+   "applications": [
+    "coulomb",
+    "capacitor_q"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "Exact by definition (an SI defining constant or an exact product of them).",
+   "sigfigs": 10,
    "codata_name": "elementary charge"
   },
   "kB": {
@@ -51,6 +125,17 @@
    "uncertainty": null,
    "exact": true,
    "unit": "J/K",
+   "category": "physical",
+   "kind": "exact",
+   "description": "Boltzmann constant, linking temperature to energy per particle. An SI defining constant; it defines the kelvin.",
+   "applications": [
+    "idealgas",
+    "arrhenius"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "Exact by definition (an SI defining constant or an exact product of them).",
+   "sigfigs": 7,
    "codata_name": "Boltzmann constant"
   },
   "NA": {
@@ -60,6 +145,16 @@
    "uncertainty": null,
    "exact": true,
    "unit": "1/mol",
+   "category": "chemical",
+   "kind": "exact",
+   "description": "Avogadro constant, the number of entities in one mole. An SI defining constant; it defines the mole.",
+   "applications": [
+    "moles"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "Exact by definition (an SI defining constant or an exact product of them).",
+   "sigfigs": 9,
    "codata_name": "Avogadro constant"
   },
   "R": {
@@ -69,6 +164,19 @@
    "uncertainty": null,
    "exact": true,
    "unit": "J/(mol*K)",
+   "category": "chemical",
+   "kind": "exact",
+   "description": "Molar gas constant, N_A·k_B. Exact because both factors are exact.",
+   "applications": [
+    "idealgas",
+    "arrhenius",
+    "nernst",
+    "gibbs"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "Exact by definition.",
+   "sigfigs": 15,
    "codata_name": "molar gas constant"
   },
   "F": {
@@ -78,27 +186,55 @@
    "uncertainty": null,
    "exact": true,
    "unit": "C/mol",
+   "category": "chemical",
+   "kind": "exact",
+   "description": "Faraday constant, the charge of one mole of elementary charges, N_A·e. Exact.",
+   "applications": [
+    "nernst"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "Exact by definition.",
+   "sigfigs": 18,
    "codata_name": "Faraday constant"
   },
   "sigma": {
    "name": "Stefan-Boltzmann constant",
    "symbol": "σ",
-   "value": "5.6703744191844314e-08",
+   "value": "5.67037441918442945397099673188923087584e-8",
    "uncertainty": null,
-   "exact": false,
+   "exact": true,
    "unit": "W/(m^2*K^4)",
-   "codata_name": "Stefan-Boltzmann constant",
-   "note": "Fixed exactly by the SI defining constants, but not a finite decimal; the value is rounded to 17 digits."
+   "category": "physical",
+   "kind": "exact_derived",
+   "description": "Stefan–Boltzmann constant, 2π⁵k_B⁴/(15h³c²). Exact in the SI but irrational.",
+   "applications": [
+    "stefan"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "An exact consequence of the SI defining constants; the number is not a finite decimal, so it is stored to 40 significant digits.",
+   "sigfigs": 40,
+   "codata_name": "Stefan-Boltzmann constant"
   },
   "b": {
    "name": "Wien wavelength displacement law constant",
    "symbol": "b",
-   "value": "0.0028977719551851727",
+   "value": "2.897771955185172661478605448092884726802e-3",
    "uncertainty": null,
-   "exact": false,
+   "exact": true,
    "unit": "m*K",
-   "codata_name": "Wien wavelength displacement law constant",
-   "note": "Fixed exactly by the SI defining constants, but not a finite decimal; the value is rounded to 17 digits."
+   "category": "physical",
+   "kind": "exact_derived",
+   "description": "Wien wavelength displacement constant: λ_max·T = b for a black body.",
+   "applications": [
+    "stefan"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "An exact consequence of the SI defining constants; the number is not a finite decimal, so it is stored to 40 significant digits.",
+   "sigfigs": 40,
+   "codata_name": "Wien wavelength displacement law constant"
   },
   "G": {
    "name": "Newtonian constant of gravitation",
@@ -107,6 +243,16 @@
    "uncertainty": "1.5e-15",
    "exact": false,
    "unit": "m^3/(kg*s^2)",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Newtonian constant of gravitation. The least precisely known fundamental constant.",
+   "applications": [
+    "gravitation",
+    "escape"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 6,
    "codata_name": "Newtonian constant of gravitation"
   },
   "gn": {
@@ -116,6 +262,18 @@
    "uncertainty": null,
    "exact": true,
    "unit": "m/s^2",
+   "category": "engineering",
+   "kind": "convention",
+   "description": "Standard acceleration of gravity g_n, a conventional value adopted by the CGPM in 1901. Not the local value of g.",
+   "applications": [
+    "weight",
+    "potential",
+    "pendulum"
+   ],
+   "source": "CGPM 1901 (3rd CGPM, Resolution 2); listed in CODATA 2022",
+   "edition": "CGPM 1901",
+   "note": "Exact by definition.",
+   "sigfigs": 6,
    "codata_name": "standard acceleration of gravity"
   },
   "atm": {
@@ -125,6 +283,16 @@
    "uncertainty": null,
    "exact": true,
    "unit": "Pa",
+   "category": "engineering",
+   "kind": "convention",
+   "description": "Standard atmosphere: the conventional sea-level pressure. Exact by definition.",
+   "applications": [
+    "pressure"
+   ],
+   "source": "CGPM 1954 (10th CGPM, Resolution 4); listed in CODATA 2022",
+   "edition": "CGPM 1954",
+   "note": "Exact by definition.",
+   "sigfigs": 6,
    "codata_name": "standard atmosphere"
   },
   "me": {
@@ -134,6 +302,16 @@
    "uncertainty": "2.8e-40",
    "exact": false,
    "unit": "kg",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Electron mass.",
+   "applications": [
+    "kinetic",
+    "debroglie"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 11,
    "codata_name": "electron mass"
   },
   "mp": {
@@ -143,6 +321,15 @@
    "uncertainty": "5.2e-37",
    "exact": false,
    "unit": "kg",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Proton mass.",
+   "applications": [
+    "kinetic"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 12,
    "codata_name": "proton mass"
   },
   "mn": {
@@ -152,6 +339,15 @@
    "uncertainty": "8.5e-37",
    "exact": false,
    "unit": "kg",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Neutron mass.",
+   "applications": [
+    "kinetic"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 12,
    "codata_name": "neutron mass"
   },
   "mu": {
@@ -161,6 +357,15 @@
    "uncertainty": "5.2e-37",
    "exact": false,
    "unit": "kg",
+   "category": "chemical",
+   "kind": "measured",
+   "description": "Atomic mass constant (unified atomic mass unit): one twelfth of the mass of a carbon-12 atom, as measured.",
+   "applications": [
+    "moles"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 12,
    "codata_name": "atomic mass constant"
   },
   "alpha": {
@@ -170,6 +375,15 @@
    "uncertainty": "1.1e-12",
    "exact": false,
    "unit": "",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Fine-structure constant, the strength of the electromagnetic interaction (dimensionless).",
+   "applications": [
+    "coulomb"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 11,
    "codata_name": "fine-structure constant"
   },
   "eps0": {
@@ -179,6 +393,17 @@
    "uncertainty": "1.4e-21",
    "exact": false,
    "unit": "F/m",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Vacuum electric permittivity. Since the 2019 SI it is measured, not exact.",
+   "applications": [
+    "coulomb",
+    "capacitor_q",
+    "capacitor_e"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 11,
    "codata_name": "vacuum electric permittivity"
   },
   "mu0": {
@@ -188,6 +413,13 @@
    "uncertainty": "2e-16",
    "exact": false,
    "unit": "N/A^2",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Vacuum magnetic permeability. Since the 2019 SI it is measured, not exactly 4π×10⁻⁷.",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 12,
    "codata_name": "vacuum mag. permeability"
   },
   "Z0": {
@@ -197,6 +429,13 @@
    "uncertainty": "5.9e-08",
    "exact": false,
    "unit": "ohm",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Characteristic impedance of vacuum, μ₀c.",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 12,
    "codata_name": "characteristic impedance of vacuum"
   },
   "Rinf": {
@@ -206,6 +445,15 @@
    "uncertainty": "1.2e-05",
    "exact": false,
    "unit": "1/m",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Rydberg constant, the scale of atomic spectral lines.",
+   "applications": [
+    "photon_l"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 14,
    "codata_name": "Rydberg constant"
   },
   "a0": {
@@ -215,6 +463,13 @@
    "uncertainty": "8.2e-21",
    "exact": false,
    "unit": "m",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Bohr radius, the most probable distance of the electron in hydrogen's ground state.",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 12,
    "codata_name": "Bohr radius"
   },
   "muB": {
@@ -224,6 +479,13 @@
    "uncertainty": "2.9e-33",
    "exact": false,
    "unit": "J/T",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Bohr magneton, the natural unit of the electron's magnetic moment.",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 11,
    "codata_name": "Bohr magneton"
   },
   "muN": {
@@ -233,6 +495,13 @@
    "uncertainty": "1.6e-36",
    "exact": false,
    "unit": "J/T",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Nuclear magneton.",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 11,
    "codata_name": "nuclear magneton"
   },
   "re": {
@@ -242,6 +511,13 @@
    "uncertainty": "1.3e-24",
    "exact": false,
    "unit": "m",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Classical electron radius.",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 11,
    "codata_name": "classical electron radius"
   },
   "lambdaC": {
@@ -251,37 +527,1017 @@
    "uncertainty": "7.6e-22",
    "exact": false,
    "unit": "m",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Compton wavelength of the electron, h/(m_e c).",
+   "applications": [
+    "debroglie"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 12,
    "codata_name": "Compton wavelength"
   },
   "Vm": {
    "name": "molar volume of an ideal gas at 273.15 K and 101.325 kPa",
    "symbol": "V_m",
-   "value": "0.022413969545014137",
+   "value": "2.241396954501413773501110288675055514434e-2",
    "uncertainty": null,
-   "exact": false,
+   "exact": true,
    "unit": "m^3/mol",
-   "codata_name": "molar volume of ideal gas (273.15 K, 101.325 kPa)",
-   "note": "Fixed exactly by the SI defining constants, but not a finite decimal; the value is rounded to 17 digits."
+   "category": "chemical",
+   "kind": "exact_derived",
+   "description": "Molar volume of an ideal gas at 273.15 K and 101.325 kPa, R·T/p.",
+   "applications": [
+    "idealgas"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "An exact consequence of the SI defining constants; the number is not a finite decimal, so it is stored to 40 significant digits.",
+   "sigfigs": 40,
+   "codata_name": "molar volume of ideal gas (273.15 K, 101.325 kPa)"
   },
   "KJ": {
    "name": "Josephson constant",
    "symbol": "K_J",
-   "value": "483597848416983.6",
+   "value": "4.835978484169836324476582850545281353534e14",
    "uncertainty": null,
-   "exact": false,
+   "exact": true,
    "unit": "Hz/V",
-   "codata_name": "Josephson constant",
-   "note": "Fixed exactly by the SI defining constants, but not a finite decimal; the value is rounded to 17 digits."
+   "category": "physical",
+   "kind": "exact_derived",
+   "description": "Josephson constant, 2e/h, relating a voltage to a frequency.",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "An exact consequence of the SI defining constants; the number is not a finite decimal, so it is stored to 40 significant digits.",
+   "sigfigs": 40,
+   "codata_name": "Josephson constant"
   },
   "RK": {
    "name": "von Klitzing constant",
    "symbol": "R_K",
-   "value": "25812.807459304513",
+   "value": "2.581280745930450666004551670608744304246e4",
    "uncertainty": null,
-   "exact": false,
+   "exact": true,
    "unit": "ohm",
-   "codata_name": "von Klitzing constant",
-   "note": "Fixed exactly by the SI defining constants, but not a finite decimal; the value is rounded to 17 digits."
+   "category": "physical",
+   "kind": "exact_derived",
+   "description": "von Klitzing constant, h/e², the quantum of resistance.",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "An exact consequence of the SI defining constants; the number is not a finite decimal, so it is stored to 40 significant digits.",
+   "sigfigs": 40,
+   "codata_name": "von Klitzing constant"
+  },
+  "mmu": {
+   "name": "muon mass",
+   "symbol": "m_μ",
+   "value": "1.883531627e-28",
+   "uncertainty": "4.2e-36",
+   "exact": false,
+   "unit": "kg",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Muon mass.",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 10,
+   "codata_name": "muon mass"
+  },
+  "mtau": {
+   "name": "tau mass",
+   "symbol": "m_τ",
+   "value": "3.16754e-27",
+   "uncertainty": "2.1e-31",
+   "exact": false,
+   "unit": "kg",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Tau lepton mass.",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 6,
+   "codata_name": "tau mass"
+  },
+  "md": {
+   "name": "deuteron mass",
+   "symbol": "m_d",
+   "value": "3.3435837768e-27",
+   "uncertainty": "1e-36",
+   "exact": false,
+   "unit": "kg",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Deuteron mass.",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 11,
+   "codata_name": "deuteron mass"
+  },
+  "mpme": {
+   "name": "proton-electron mass ratio",
+   "symbol": "m_p/m_e",
+   "value": "1836.152673426",
+   "uncertainty": "3.2e-08",
+   "exact": false,
+   "unit": "",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Ratio of the proton mass to the electron mass (dimensionless).",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 13,
+   "codata_name": "proton-electron mass ratio"
+  },
+  "ge": {
+   "name": "electron g-factor",
+   "symbol": "g_e",
+   "value": "-2.00231930436092",
+   "uncertainty": "3.6e-13",
+   "exact": false,
+   "unit": "",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Electron g-factor (dimensionless, negative by convention).",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 15,
+   "codata_name": "electron g factor"
+  },
+  "Eh": {
+   "name": "Hartree energy",
+   "symbol": "E_h",
+   "value": "4.359744722206e-18",
+   "uncertainty": "4.8e-30",
+   "exact": false,
+   "unit": "J",
+   "category": "physical",
+   "kind": "measured",
+   "description": "Atomic unit of energy, 2R∞hc.",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "sigfigs": 14,
+   "codata_name": "Hartree energy"
+  },
+  "eV": {
+   "name": "electron volt",
+   "symbol": "eV",
+   "value": "1.602176634e-19",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "J",
+   "category": "physical",
+   "kind": "exact",
+   "description": "Energy gained by an electron across one volt. Exact: it equals the elementary charge times 1 V.",
+   "applications": [
+    "photon_f",
+    "kinetic"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "Exact by definition.",
+   "sigfigs": 10,
+   "codata_name": "electron volt"
+  },
+  "c1": {
+   "name": "first radiation constant",
+   "symbol": "c₁",
+   "value": "3.74177185219275801136715555592998513822e-16",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "W*m^2",
+   "category": "physical",
+   "kind": "exact_derived",
+   "description": "First radiation constant, 2πhc², in Planck's law of black-body radiation.",
+   "applications": [
+    "stefan"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "An exact consequence of the SI defining constants; the number is not a finite decimal, so it is stored to 40 significant digits.",
+   "sigfigs": 40,
+   "codata_name": "first radiation constant"
+  },
+  "c2": {
+   "name": "second radiation constant",
+   "symbol": "c₂",
+   "value": "1.438776877503933802146671601543911595199e-2",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "m*K",
+   "category": "physical",
+   "kind": "exact_derived",
+   "description": "Second radiation constant, hc/k_B.",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "An exact consequence of the SI defining constants; the number is not a finite decimal, so it is stored to 40 significant digits.",
+   "sigfigs": 40,
+   "codata_name": "second radiation constant"
+  },
+  "Phi0": {
+   "name": "magnetic flux quantum",
+   "symbol": "Φ₀",
+   "value": "2.067833848461929323081115412147497340172e-15",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "Wb",
+   "category": "physical",
+   "kind": "exact_derived",
+   "description": "Magnetic flux quantum, h/2e.",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "An exact consequence of the SI defining constants; the number is not a finite decimal, so it is stored to 40 significant digits.",
+   "sigfigs": 40,
+   "codata_name": "mag. flux quantum"
+  },
+  "G0": {
+   "name": "conductance quantum",
+   "symbol": "G₀",
+   "value": "7.748091729863650646680823323308763943587e-5",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "S",
+   "category": "physical",
+   "kind": "exact_derived",
+   "description": "Conductance quantum, 2e²/h.",
+   "applications": [],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "An exact consequence of the SI defining constants; the number is not a finite decimal, so it is stored to 40 significant digits.",
+   "sigfigs": 40,
+   "codata_name": "conductance quantum"
+  },
+  "bprime": {
+   "name": "Wien frequency displacement law constant",
+   "symbol": "b′",
+   "value": "5.878925757646824946606130795309721691475e10",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "Hz/K",
+   "category": "physical",
+   "kind": "exact_derived",
+   "description": "Wien frequency displacement constant: the peak frequency of black-body radiation is b′·T.",
+   "applications": [
+    "stefan"
+   ],
+   "source": "CODATA 2022 (NIST SRD 121; Mohr, Newell, Taylor, Tiesinga, Rev. Mod. Phys. 97, 025002 (2025))",
+   "edition": "CODATA 2022",
+   "note": "An exact consequence of the SI defining constants; the number is not a finite decimal, so it is stored to 40 significant digits.",
+   "sigfigs": 40,
+   "codata_name": "Wien frequency displacement law constant"
+  },
+  "p0": {
+   "name": "standard-state pressure",
+   "symbol": "p°",
+   "value": "100000",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "Pa",
+   "category": "chemical",
+   "kind": "convention",
+   "description": "IUPAC standard-state pressure of 1 bar (the convention since 1982), used for tabulated thermochemical data.",
+   "applications": [
+    "gibbs"
+   ],
+   "source": "IUPAC 1982 (standard state pressure of 1 bar); listed in CODATA 2022",
+   "edition": "IUPAC 1982",
+   "note": "Exact by definition.",
+   "sigfigs": 1,
+   "codata_name": "standard-state pressure"
+  },
+  "pi": {
+   "name": "pi",
+   "symbol": "π",
+   "value": "3.1415926535897932384626433832795028841971693993751",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "",
+   "category": "mathematical",
+   "kind": "mathematical",
+   "description": "Ratio of a circle's circumference to its diameter.",
+   "applications": [
+    "circle_area",
+    "circle_circ",
+    "sphere_vol",
+    "sphere_area",
+    "cyl_vol"
+   ],
+   "source": "Mathematical definition; digits computed with mpmath at 80 digits and stored to 50",
+   "edition": "n/a",
+   "note": "Irrational (or not known to be rational): the number is defined exactly, and the value is shown to 50 significant digits.",
+   "sigfigs": 50
+  },
+  "euler_e": {
+   "name": "Euler's number",
+   "symbol": "e",
+   "value": "2.7182818284590452353602874713526624977572470937000",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "",
+   "category": "mathematical",
+   "kind": "mathematical",
+   "description": "Base of the natural logarithm, lim (1 + 1/n)ⁿ.",
+   "applications": [
+    "expgrowth",
+    "firstorder"
+   ],
+   "source": "Mathematical definition; digits computed with mpmath at 80 digits and stored to 50",
+   "edition": "n/a",
+   "note": "Irrational (or not known to be rational): the number is defined exactly, and the value is shown to 50 significant digits.",
+   "sigfigs": 50
+  },
+  "tau": {
+   "name": "tau",
+   "symbol": "τ",
+   "value": "6.2831853071795864769252867665590057683943387987502",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "",
+   "category": "mathematical",
+   "kind": "mathematical",
+   "description": "The full-circle constant 2π.",
+   "applications": [
+    "circle_circ"
+   ],
+   "source": "Mathematical definition; digits computed with mpmath at 80 digits and stored to 50",
+   "edition": "n/a",
+   "note": "Irrational (or not known to be rational): the number is defined exactly, and the value is shown to 50 significant digits.",
+   "sigfigs": 50
+  },
+  "phi": {
+   "name": "golden ratio",
+   "symbol": "φ",
+   "value": "1.6180339887498948482045868343656381177203091798058",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "",
+   "category": "mathematical",
+   "kind": "mathematical",
+   "description": "The positive root of x² = x + 1, (1 + √5)/2.",
+   "applications": [],
+   "source": "Mathematical definition; digits computed with mpmath at 80 digits and stored to 50",
+   "edition": "n/a",
+   "note": "Irrational (or not known to be rational): the number is defined exactly, and the value is shown to 50 significant digits.",
+   "sigfigs": 50
+  },
+  "sqrt2": {
+   "name": "square root of 2",
+   "symbol": "√2",
+   "value": "1.4142135623730950488016887242096980785696718753769",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "",
+   "category": "mathematical",
+   "kind": "mathematical",
+   "description": "Length of the diagonal of a unit square (Pythagoras).",
+   "applications": [
+    "pythag"
+   ],
+   "source": "Mathematical definition; digits computed with mpmath at 80 digits and stored to 50",
+   "edition": "n/a",
+   "note": "Irrational (or not known to be rational): the number is defined exactly, and the value is shown to 50 significant digits.",
+   "sigfigs": 50
+  },
+  "ln2": {
+   "name": "natural logarithm of 2",
+   "symbol": "ln 2",
+   "value": "0.69314718055994530941723212145817656807550013436026",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "",
+   "category": "mathematical",
+   "kind": "mathematical",
+   "description": "Used for doubling times and half-lives.",
+   "applications": [
+    "doubling",
+    "halflife"
+   ],
+   "source": "Mathematical definition; digits computed with mpmath at 80 digits and stored to 50",
+   "edition": "n/a",
+   "note": "Irrational (or not known to be rational): the number is defined exactly, and the value is shown to 50 significant digits.",
+   "sigfigs": 50
+  },
+  "ln10": {
+   "name": "natural logarithm of 10",
+   "symbol": "ln 10",
+   "value": "2.3025850929940456840179914546843642076011014886288",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "",
+   "category": "mathematical",
+   "kind": "mathematical",
+   "description": "Converts between natural and common logarithms.",
+   "applications": [
+    "ph"
+   ],
+   "source": "Mathematical definition; digits computed with mpmath at 80 digits and stored to 50",
+   "edition": "n/a",
+   "note": "Irrational (or not known to be rational): the number is defined exactly, and the value is shown to 50 significant digits.",
+   "sigfigs": 50
+  },
+  "gammaE": {
+   "name": "Euler–Mascheroni constant",
+   "symbol": "γ",
+   "value": "0.57721566490153286060651209008240243104215933593992",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "",
+   "category": "mathematical",
+   "kind": "mathematical",
+   "description": "Limit of the harmonic series minus ln n.",
+   "applications": [],
+   "source": "Mathematical definition; digits computed with mpmath at 80 digits and stored to 50",
+   "edition": "n/a",
+   "note": "Irrational (or not known to be rational): the number is defined exactly, and the value is shown to 50 significant digits.",
+   "sigfigs": 50
+  },
+  "catalan": {
+   "name": "Catalan's constant",
+   "symbol": "G",
+   "value": "0.91596559417721901505460351493238411077414937428167",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "",
+   "category": "mathematical",
+   "kind": "mathematical",
+   "description": "Σ (−1)ᵏ/(2k+1)², about 0.9159…",
+   "applications": [],
+   "source": "Mathematical definition; digits computed with mpmath at 80 digits and stored to 50",
+   "edition": "n/a",
+   "note": "Irrational (or not known to be rational): the number is defined exactly, and the value is shown to 50 significant digits.",
+   "sigfigs": 50
+  },
+  "zeta3": {
+   "name": "Apéry's constant",
+   "symbol": "ζ(3)",
+   "value": "1.2020569031595942853997381615114499907649862923405",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "",
+   "category": "mathematical",
+   "kind": "mathematical",
+   "description": "The Riemann zeta function at 3; Roger Apéry proved it irrational.",
+   "applications": [],
+   "source": "Mathematical definition; digits computed with mpmath at 80 digits and stored to 50",
+   "edition": "n/a",
+   "note": "Irrational (or not known to be rational): the number is defined exactly, and the value is shown to 50 significant digits.",
+   "sigfigs": 50
+  },
+  "khinchin": {
+   "name": "Khinchin's constant",
+   "symbol": "K₀",
+   "value": "2.6854520010653064453097148354817956938203822939945",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "",
+   "category": "mathematical",
+   "kind": "mathematical",
+   "description": "The geometric mean of continued-fraction coefficients of almost every real number.",
+   "applications": [],
+   "source": "Mathematical definition; digits computed with mpmath at 80 digits and stored to 50",
+   "edition": "n/a",
+   "note": "Irrational (or not known to be rational): the number is defined exactly, and the value is shown to 50 significant digits.",
+   "sigfigs": 50
+  },
+  "glaisher": {
+   "name": "Glaisher–Kinkelin constant",
+   "symbol": "A",
+   "value": "1.2824271291006226368753425688697917277676889273250",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "",
+   "category": "mathematical",
+   "kind": "mathematical",
+   "description": "Appears in asymptotics of the hyperfactorial and in sums of k ln k.",
+   "applications": [],
+   "source": "Mathematical definition; digits computed with mpmath at 80 digits and stored to 50",
+   "edition": "n/a",
+   "note": "Irrational (or not known to be rational): the number is defined exactly, and the value is shown to 50 significant digits.",
+   "sigfigs": 50
+  },
+  "au": {
+   "name": "astronomical unit",
+   "symbol": "au",
+   "value": "149597870700",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "m",
+   "category": "astronomical",
+   "kind": "exact",
+   "description": "Exactly 149 597 870 700 m, by IAU definition (no longer a measured distance).",
+   "applications": [
+    "gravitation"
+   ],
+   "source": "IAU 2012 Resolution B2",
+   "edition": "IAU 2012 B2",
+   "sigfigs": 10
+  },
+  "jyear": {
+   "name": "Julian year",
+   "symbol": "a",
+   "value": "31557600",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "s",
+   "category": "astronomical",
+   "kind": "exact",
+   "description": "Exactly 365.25 days.",
+   "applications": [],
+   "source": "IAU (Julian year = 365.25 days of 86 400 s)",
+   "edition": "IAU",
+   "sigfigs": 6
+  },
+  "ly": {
+   "name": "light-year",
+   "symbol": "ly",
+   "value": "9460730472580800",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "m",
+   "category": "astronomical",
+   "kind": "exact",
+   "description": "Exactly 9 460 730 472 580 800 m.",
+   "applications": [
+    "wave"
+   ],
+   "source": "IAU: the distance light travels in one Julian year in vacuum, c × 1 a",
+   "edition": "IAU",
+   "sigfigs": 14
+  },
+  "pc": {
+   "name": "parsec",
+   "symbol": "pc",
+   "value": "3.085677581491367278913937957796471610732e16",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "m",
+   "category": "astronomical",
+   "kind": "exact_derived",
+   "description": "Exactly (648 000/π) au: irrational, shown to 40 digits.",
+   "applications": [],
+   "source": "IAU 2015 Resolution B3 (nominal conversion constants)",
+   "edition": "IAU 2015 B2",
+   "sigfigs": 40
+  },
+  "GMsun": {
+   "name": "nominal solar mass parameter",
+   "symbol": "GM☉",
+   "value": "1.3271244e20",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "m^3/s^2",
+   "category": "astronomical",
+   "kind": "nominal",
+   "description": "A conversion constant defined by the IAU: the best measured GM☉ is slightly different, and is known far better than G or M☉ alone.",
+   "applications": [
+    "gravitation",
+    "escape"
+   ],
+   "source": "IAU 2015 Resolution B3 (nominal conversion constants)",
+   "edition": "IAU 2015 B3",
+   "note": "Conventional definition, not a best estimate.",
+   "sigfigs": 8
+  },
+  "Rsun": {
+   "name": "nominal solar radius",
+   "symbol": "R☉",
+   "value": "6.957e8",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "m",
+   "category": "astronomical",
+   "kind": "nominal",
+   "description": "A conversion constant defined by the IAU, equal to 695 700 km.",
+   "applications": [],
+   "source": "IAU 2015 Resolution B3 (nominal conversion constants)",
+   "edition": "IAU 2015 B3",
+   "note": "Conventional definition, not a best estimate.",
+   "sigfigs": 4
+  },
+  "Lsun": {
+   "name": "nominal solar luminosity",
+   "symbol": "L☉",
+   "value": "3.828e26",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "W",
+   "category": "astronomical",
+   "kind": "nominal",
+   "description": "A conversion constant defined by the IAU.",
+   "applications": [
+    "stefan"
+   ],
+   "source": "IAU 2015 Resolution B3 (nominal conversion constants)",
+   "edition": "IAU 2015 B3",
+   "note": "Conventional definition, not a best estimate.",
+   "sigfigs": 4
+  },
+  "Tsun": {
+   "name": "nominal solar effective temperature",
+   "symbol": "T☉",
+   "value": "5772",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "K",
+   "category": "astronomical",
+   "kind": "nominal",
+   "description": "A conversion constant defined by the IAU.",
+   "applications": [
+    "stefan"
+   ],
+   "source": "IAU 2015 Resolution B3 (nominal conversion constants)",
+   "edition": "IAU 2015 B3",
+   "note": "Conventional definition, not a best estimate.",
+   "sigfigs": 4
+  },
+  "Ssun": {
+   "name": "nominal total solar irradiance",
+   "symbol": "S☉",
+   "value": "1361",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "W/m^2",
+   "category": "astronomical",
+   "kind": "nominal",
+   "description": "Nominal irradiance at one au, a conversion constant defined by the IAU; the real value varies with the solar cycle.",
+   "applications": [
+    "stefan"
+   ],
+   "source": "IAU 2015 Resolution B3 (nominal conversion constants)",
+   "edition": "IAU 2015 B3",
+   "note": "Conventional definition, not a best estimate.",
+   "sigfigs": 4
+  },
+  "GMearth": {
+   "name": "nominal terrestrial mass parameter",
+   "symbol": "GM⊕",
+   "value": "3.986004e14",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "m^3/s^2",
+   "category": "astronomical",
+   "kind": "nominal",
+   "description": "A conversion constant defined by the IAU.",
+   "applications": [
+    "gravitation",
+    "escape"
+   ],
+   "source": "IAU 2015 Resolution B3 (nominal conversion constants)",
+   "edition": "IAU 2015 B3",
+   "note": "Conventional definition, not a best estimate.",
+   "sigfigs": 7
+  },
+  "Rearth_eq": {
+   "name": "nominal equatorial radius of Earth",
+   "symbol": "R⊕e",
+   "value": "6.3781e6",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "m",
+   "category": "astronomical",
+   "kind": "nominal",
+   "description": "A conversion constant defined by the IAU, 6378.1 km.",
+   "applications": [],
+   "source": "IAU 2015 Resolution B3 (nominal conversion constants)",
+   "edition": "IAU 2015 B3",
+   "note": "Conventional definition, not a best estimate.",
+   "sigfigs": 5
+  },
+  "Rearth_pol": {
+   "name": "nominal polar radius of Earth",
+   "symbol": "R⊕p",
+   "value": "6.3568e6",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "m",
+   "category": "astronomical",
+   "kind": "nominal",
+   "description": "A conversion constant defined by the IAU, 6356.8 km.",
+   "applications": [],
+   "source": "IAU 2015 Resolution B3 (nominal conversion constants)",
+   "edition": "IAU 2015 B3",
+   "note": "Conventional definition, not a best estimate.",
+   "sigfigs": 5
+  },
+  "GMjup": {
+   "name": "nominal Jovian mass parameter",
+   "symbol": "GMJ",
+   "value": "1.2668653e17",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "m^3/s^2",
+   "category": "astronomical",
+   "kind": "nominal",
+   "description": "A conversion constant defined by the IAU.",
+   "applications": [
+    "gravitation"
+   ],
+   "source": "IAU 2015 Resolution B3 (nominal conversion constants)",
+   "edition": "IAU 2015 B3",
+   "note": "Conventional definition, not a best estimate.",
+   "sigfigs": 8
+  },
+  "Rjup_eq": {
+   "name": "nominal equatorial radius of Jupiter",
+   "symbol": "RJe",
+   "value": "7.1492e7",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "m",
+   "category": "astronomical",
+   "kind": "nominal",
+   "description": "A conversion constant defined by the IAU, 71 492 km.",
+   "applications": [],
+   "source": "IAU 2015 Resolution B3 (nominal conversion constants)",
+   "edition": "IAU 2015 B3",
+   "note": "Conventional definition, not a best estimate.",
+   "sigfigs": 5
+  },
+  "Rjup_pol": {
+   "name": "nominal polar radius of Jupiter",
+   "symbol": "RJp",
+   "value": "6.6854e7",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "m",
+   "category": "astronomical",
+   "kind": "nominal",
+   "description": "A conversion constant defined by the IAU, 66 854 km.",
+   "applications": [],
+   "source": "IAU 2015 Resolution B3 (nominal conversion constants)",
+   "edition": "IAU 2015 B3",
+   "note": "Conventional definition, not a best estimate.",
+   "sigfigs": 5
+  },
+  "Msun": {
+   "name": "solar mass",
+   "symbol": "M☉",
+   "value": "1.988410e30",
+   "uncertainty": "4.5e25",
+   "exact": false,
+   "unit": "kg",
+   "category": "astronomical",
+   "kind": "derived",
+   "description": "Derived as GM☉(nominal)/G. The uncertainty comes only from G, so it is far larger than the uncertainty of GM☉ itself.",
+   "applications": [
+    "gravitation"
+   ],
+   "source": "Derived from IAU 2015 B3 (GM☉ nominal) and CODATA 2022 (G)",
+   "edition": "IAU 2015 B3 + CODATA 2022",
+   "note": "Model-dependent: changes whenever the accepted value of G changes.",
+   "sigfigs": 7
+  },
+  "Mearth": {
+   "name": "Earth mass",
+   "symbol": "M⊕",
+   "value": "5.972168e24",
+   "uncertainty": "1.3e20",
+   "exact": false,
+   "unit": "kg",
+   "category": "astronomical",
+   "kind": "derived",
+   "description": "Derived as GM⊕(nominal)/G. The uncertainty comes only from G.",
+   "applications": [
+    "gravitation"
+   ],
+   "source": "Derived from IAU 2015 B3 (GM⊕ nominal) and CODATA 2022 (G)",
+   "edition": "IAU 2015 B3 + CODATA 2022",
+   "note": "Model-dependent: changes whenever the accepted value of G changes.",
+   "sigfigs": 6
+  },
+  "T0C": {
+   "name": "zero of the Celsius scale",
+   "symbol": "0 °C",
+   "value": "273.15",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "K",
+   "category": "engineering",
+   "kind": "convention",
+   "description": "Exactly 273.15 K. A temperature difference of 1 °C is exactly 1 K.",
+   "applications": [],
+   "source": "SI Brochure (9th ed.), definition of the degree Celsius",
+   "edition": "SI 2019",
+   "note": "Exact by convention: an agreed reference value, not a measurement.",
+   "sigfigs": 5
+  },
+  "inch": {
+   "name": "inch",
+   "symbol": "in",
+   "value": "0.0254",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "m",
+   "category": "engineering",
+   "kind": "exact",
+   "description": "International inch, exactly 25.4 mm (1959 agreement).",
+   "applications": [],
+   "source": "NIST SP 811, Guide for the Use of the International System of Units (conversion factors)",
+   "edition": "NIST SP 811",
+   "note": "Exact by definition or by an exact combination of defined values.",
+   "sigfigs": 3
+  },
+  "foot": {
+   "name": "foot",
+   "symbol": "ft",
+   "value": "0.3048",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "m",
+   "category": "engineering",
+   "kind": "exact",
+   "description": "International foot, exactly 0.3048 m.",
+   "applications": [],
+   "source": "NIST SP 811, Guide for the Use of the International System of Units (conversion factors)",
+   "edition": "NIST SP 811",
+   "note": "Exact by definition or by an exact combination of defined values.",
+   "sigfigs": 4
+  },
+  "lb": {
+   "name": "pound (avoirdupois)",
+   "symbol": "lb",
+   "value": "0.45359237",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "kg",
+   "category": "engineering",
+   "kind": "exact",
+   "description": "International avoirdupois pound, exactly 0.453 592 37 kg (1959 agreement).",
+   "applications": [
+    "weight"
+   ],
+   "source": "NIST SP 811, Guide for the Use of the International System of Units (conversion factors)",
+   "edition": "NIST SP 811",
+   "note": "Exact by definition or by an exact combination of defined values.",
+   "sigfigs": 8
+  },
+  "cal_th": {
+   "name": "thermochemical calorie",
+   "symbol": "cal_th",
+   "value": "4.184",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "J",
+   "category": "engineering",
+   "kind": "exact",
+   "description": "Exactly 4.184 J: the calorie of thermochemical tables.",
+   "applications": [
+    "heat"
+   ],
+   "source": "NIST SP 811, Guide for the Use of the International System of Units (conversion factors)",
+   "edition": "NIST SP 811",
+   "note": "Exact by definition or by an exact combination of defined values.",
+   "sigfigs": 4
+  },
+  "cal_IT": {
+   "name": "International Table calorie",
+   "symbol": "cal_IT",
+   "value": "4.1868",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "J",
+   "category": "engineering",
+   "kind": "exact",
+   "description": "Exactly 4.1868 J (International Steam Table calorie).",
+   "applications": [
+    "heat"
+   ],
+   "source": "NIST SP 811, Guide for the Use of the International System of Units (conversion factors)",
+   "edition": "NIST SP 811",
+   "note": "Exact by definition or by an exact combination of defined values.",
+   "sigfigs": 5
+  },
+  "kWh": {
+   "name": "kilowatt-hour",
+   "symbol": "kW·h",
+   "value": "3.6e6",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "J",
+   "category": "engineering",
+   "kind": "exact",
+   "description": "Exactly 3.6 MJ.",
+   "applications": [
+    "elec_power"
+   ],
+   "source": "NIST SP 811, Guide for the Use of the International System of Units (conversion factors)",
+   "edition": "NIST SP 811",
+   "note": "Exact by definition or by an exact combination of defined values.",
+   "sigfigs": 2
+  },
+  "bar": {
+   "name": "bar",
+   "symbol": "bar",
+   "value": "1e5",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "Pa",
+   "category": "engineering",
+   "kind": "exact",
+   "description": "Exactly 100 kPa.",
+   "applications": [
+    "pressure"
+   ],
+   "source": "NIST SP 811, Guide for the Use of the International System of Units (conversion factors)",
+   "edition": "NIST SP 811",
+   "note": "Exact by definition or by an exact combination of defined values.",
+   "sigfigs": 1
+  },
+  "mmHg": {
+   "name": "conventional millimetre of mercury",
+   "symbol": "mmHg",
+   "value": "133.322387415",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "Pa",
+   "category": "engineering",
+   "kind": "convention",
+   "description": "Exactly 13 595.1 kg/m³ × g_n × 1 mm.",
+   "applications": [
+    "pressure"
+   ],
+   "source": "NIST SP 811, Guide for the Use of the International System of Units (conversion factors)",
+   "edition": "NIST SP 811",
+   "note": "Exact by convention: an agreed reference value, not a measurement.",
+   "sigfigs": 12
+  },
+  "hp": {
+   "name": "horsepower (mechanical)",
+   "symbol": "hp",
+   "value": "745.69987158227022",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "W",
+   "category": "engineering",
+   "kind": "exact",
+   "description": "Exactly 550 ft·lbf/s, computed from the exact foot, pound and standard gravity.",
+   "applications": [
+    "power"
+   ],
+   "source": "NIST SP 811, Guide for the Use of the International System of Units (conversion factors)",
+   "edition": "NIST SP 811",
+   "note": "Exact by definition or by an exact combination of defined values.",
+   "sigfigs": 17
+  },
+  "T_isa": {
+   "name": "ISA sea-level temperature",
+   "symbol": "T₀",
+   "value": "288.15",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "K",
+   "category": "engineering",
+   "kind": "convention",
+   "description": "Reference temperature of the International Standard Atmosphere at mean sea level (15 °C). A reference, not the weather.",
+   "applications": [],
+   "source": "ISO 2533:1975 Standard Atmosphere",
+   "edition": "ISO 2533:1975",
+   "note": "Exact by convention: an agreed reference value, not a measurement.",
+   "sigfigs": 5
+  },
+  "rho_isa": {
+   "name": "ISA sea-level air density",
+   "symbol": "ρ₀",
+   "value": "1.225",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "kg/m^3",
+   "category": "engineering",
+   "kind": "convention",
+   "description": "Reference air density of the International Standard Atmosphere at mean sea level.",
+   "applications": [
+    "density"
+   ],
+   "source": "ISO 2533:1975 Standard Atmosphere",
+   "edition": "ISO 2533:1975",
+   "note": "Exact by convention: an agreed reference value, not a measurement.",
+   "sigfigs": 4
+  },
+  "lapse_isa": {
+   "name": "ISA temperature lapse rate",
+   "symbol": "L",
+   "value": "0.0065",
+   "uncertainty": null,
+   "exact": true,
+   "unit": "K/m",
+   "category": "engineering",
+   "kind": "convention",
+   "description": "Temperature falls by 6.5 K per kilometre in the ISA troposphere.",
+   "applications": [],
+   "source": "ISO 2533:1975 Standard Atmosphere",
+   "edition": "ISO 2533:1975",
+   "note": "Exact by convention: an agreed reference value, not a measurement.",
+   "sigfigs": 2
   }
  }
 }
