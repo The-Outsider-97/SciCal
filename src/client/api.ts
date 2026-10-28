@@ -36,6 +36,40 @@ export interface AssistStatus {
 
 export interface Download { blob: Blob; filename: string }
 
+/** What /api/graph/export answers: the file (when small enough to send back) and what was checked and left out. */
+export interface SpatialExport {
+  ok: true;
+  format: 'sgeo' | 'sdrw';
+  contract: string;
+  filename: string;
+  path: string;
+  size: number;
+  sha256: string;
+  documentId: string;
+  revision: number;
+  mime: string;
+  unit?: string;
+  validation: { mode: string; ok: boolean; errors: number; warnings: number; reopened: boolean; issues: Array<{ severity: string; code: string; message: string }> };
+  layers: Array<{ id?: string; label: string; kind?: string; objects?: number; vertices?: number; triangles?: number; pieces?: number; controlPoints?: number; points?: number; entities?: number; color?: string }>;
+  skipped: Array<{ id?: string; label?: string; reason: string }>;
+  notes: string[];
+  mode?: 'wireframe' | 'contours';
+  entities?: number;
+  contentBase64?: string;
+}
+
+export interface SpatialExportRequest {
+  format: 'sgeo' | 'sdrw';
+  source: '2d' | '3d' | '3d-wireframe' | '3d-contours';
+  spec: Record<string, unknown>;
+  name: string;
+  unit: string;
+  colors?: Record<string, string>;
+  view?: { azimuth: number; elevation: number; aspect: 'box' | 'equal' };
+  settings: Settings;
+  context: string[];
+}
+
 const MARKER = { 'X-SLAI-SciCal': '1' };
 
 export class Api {
@@ -119,8 +153,15 @@ export class Api {
   domain(domain: string, op: string, params: Record<string, unknown>, settings: Settings, jobId: string): Promise<Record<string, unknown> & { ok: boolean; error?: ApiErrorBody }> {
     return this.compute('/api/domain', { domain, op, params, settings, jobId });
   }
-  graph(op: 'render' | 'analyze', spec: Record<string, unknown>, settings: Settings, context: string[], signal?: AbortSignal): Promise<GraphResult & Record<string, unknown>> {
+  graph(op: 'render' | 'analyze' | 'render3d', spec: Record<string, unknown>, settings: Settings, context: string[], signal?: AbortSignal): Promise<GraphResult & Record<string, unknown>> {
     return this.compute('/api/graph', { op, spec, settings, context }, signal);
+  }
+
+  /** Save the graph as an SGEO or SDRW file with SLAI's own writers. Failures (nothing to save, a bad unit) throw an ApiError with the service's reason. */
+  async exportGraph(body: SpatialExportRequest): Promise<SpatialExport> {
+    const res = await this.send('POST', '/api/graph/export', body);
+    if (!res.ok) return this.fail(res);
+    return (await res.json()) as SpatialExport;
   }
 
   sessions(): Promise<{ sessions: SessionMeta[] }> { return this.data('GET', '/api/sessions'); }

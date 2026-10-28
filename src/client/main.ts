@@ -6,10 +6,12 @@ import { ApiError } from './api.js';
 import { h, replace } from './dom.js';
 
 registerView('math', async () => (await import('./views/math.js')).createMathView());
-registerView('graph', async () => (await import('./views/graph.js')).createGraphView());
+registerView('graph', async () => (await import('./views/graphhost.js')).createGraphHost());
 registerView('chemistry', async () => (await import('./views/domain.js')).createDomainView('chemistry'));
 registerView('biology', async () => (await import('./views/domain.js')).createDomainView('biology'));
 registerView('measurement', async () => (await import('./views/domain.js')).createDomainView('measurement'));
+registerView('finance', async () => (await import('./views/domain.js')).createDomainView('finance'));
+registerView('constants', async () => (await import('./views/constants.js')).createConstantsView());
 registerView('formulas', async () => (await import('./views/domain.js')).createDomainView('formulas'));
 
 async function start(): Promise<void> {

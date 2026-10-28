@@ -23,6 +23,8 @@ const TABS: Array<{ id: Workspace; title: string; icon: string }> = [
   { id: 'biology', title: 'Biology', icon: 'biology' },
   { id: 'measurement', title: 'Measurement', icon: 'measurement' },
   { id: 'formulas', title: 'Formulas', icon: 'formulas' },
+  { id: 'finance', title: 'Finance', icon: 'finance' },
+  { id: 'constants', title: 'Constants', icon: 'constants' },
 ];
 
 const factories: Partial<Record<Workspace, () => Promise<WorkspaceView>>> = {};

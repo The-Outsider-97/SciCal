@@ -23,6 +23,27 @@ const LIVE = new Set(['periodic_table', 'genetic_code', 'units', 'constants', 'f
 /** Their results are large reference data, not a calculation worth keeping in a worksheet. */
 const NO_SAVE = new Set(['periodic_table', 'genetic_code', 'units']);
 
+/** Fill empty Finance fields from the person's own financial parameters (Constants > Financial parameters). Returns the labels that were filled. */
+function financeDefaults(domainId: string, op: FormOp, state: FormState): string[] {
+  if (domainId !== 'finance') return [];
+  const p = store.prefs;
+  const wanted: Array<[string, string | undefined, string]> = [
+    ['currency', p.finCurrency || undefined, 'currency'],
+    ['places', p.finPlaces === undefined || p.finPlaces === null ? undefined : String(p.finPlaces), 'decimals'],
+    ['inflation', p.finInflation === undefined || p.finInflation === null ? undefined : String(p.finInflation), 'inflation'],
+  ];
+  if (['npv', 'dcf', 'payback'].includes(op.id)) wanted.push(['rate', p.finDiscountRate === undefined || p.finDiscountRate === null ? undefined : String(p.finDiscountRate), 'discount rate']);
+  const done: string[] = [];
+  for (const [key, value, label] of wanted) {
+    const f = op.fields.find((x) => x.key === key);
+    if (!f || value === undefined || (state[key] !== '' && state[key] !== undefined)) continue;
+    if (f.kind === 'select' && !(f.options ?? []).some((o) => o.value === value)) continue;
+    state[key] = value;
+    done.push(label);
+  }
+  return done;
+}
+
 export function createDomainView(domainId: string): WorkspaceView {
   const dom = store.forms[domainId];
   const ops: FormOp[] = dom?.ops ?? [];
@@ -138,11 +159,12 @@ export function createDomainView(domainId: string): WorkspaceView {
     if (!next) return;
     op = next;
     state = params ? seed(op, params) : emptyState(op);
+    const prefilled = params ? [] : financeDefaults(domainId, op, state);
     last = null;
     missingNote.hidden = true;
     paintOps();
     replace(title, op.title);
-    replace(summary, op.summary);
+    replace(summary, op.summary, prefilled.length ? h('span', { class: 'muted', text: ` Pre-filled from your financial parameters: ${prefilled.join(', ')}.` }) : null);
     form = buildForm(op, state, () => { if (LIVE.has(op.id)) runSoon(); }, () => void run());
     replace(formBox, op.fields.length ? form.el : null);
     const buttonsRow: Node[] = op.fields.length || !LIVE.has(op.id) ? [h('button', { class: 'btn primary', type: 'button', text: LIVE.has(op.id) ? 'Search' : 'Calculate', on: { click: () => void run() } })] : [];
@@ -182,7 +204,7 @@ export function createDomainView(domainId: string): WorkspaceView {
       const p = req.payload;
       const id = typeof p.op === 'string' ? p.op : '';
       if (!id || !ops.some((o) => o.id === id)) return;
-      choose(id, isRecord(p.params) ? p.params : undefined, true);
+      choose(id, isRecord(p.params) ? p.params : undefined, p.go !== false);
     },
   };
 }

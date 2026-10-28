@@ -517,3 +517,65 @@ table.code th { text-align: center; }
 .saved-open strong, .saved-open span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .saved-open:hover strong { color: var(--accent-ink); }
 .kv .k { text-transform: none; letter-spacing: 0; font-size: .8rem; }
+
+.assumptions .assume { margin: .3rem 0 0; padding-left: 1.2rem; display: grid; gap: .3rem; font-size: .92rem; color: var(--muted); }
+.graph-hand { margin: .6rem 0; }
+
+/* ------------------------------------------------------------------------------------------------------------------ constants page */
+.consts { display: grid; gap: 1.1rem; max-width: 1100px; margin: 0 auto; min-width: 0; }
+.const-search input { width: 100%; }
+.consts .chips { margin-top: .7rem; }
+.chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent-ink); box-shadow: var(--inset-sm); font-weight: 700; }
+.chip.fin { border-style: dashed; }
+.const-list { display: grid; gap: .9rem; }
+.const-card { background: var(--bg); border-radius: var(--radius); box-shadow: var(--raise); padding: .9rem 1.1rem; border: var(--bw) solid var(--line); display: grid; gap: .55rem; min-width: 0; }
+.const-head { display: flex; align-items: flex-start; gap: .7rem; }
+.const-head > div { flex: 1; min-width: 0; }
+.const-head h3 { font-size: 1.02rem; display: inline; margin-right: .5rem; }
+.const-sym { font-family: var(--font-mono, monospace); color: var(--accent-ink); font-weight: 700; }
+.const-val { font-size: 1.35rem; font-weight: 600; overflow-wrap: anywhere; }
+.const-val .num { font-variant-numeric: tabular-nums; }
+.const-unit { color: var(--muted); font-size: 1rem; font-weight: 500; }
+.const-card .x { color: var(--muted); font-size: .85rem; }
+.const-actions { flex-wrap: wrap; gap: .45rem; }
+.const-actions .btn { display: inline-flex; align-items: center; gap: .3rem; }
+.const-actions .glyph { width: 1rem; height: 1rem; }
+.const-more > summary { cursor: pointer; color: var(--accent-ink); font-size: .9rem; }
+.const-details { display: grid; gap: .8rem; padding-top: .6rem; }
+.const-details .kvs { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.const-details .kv .v { font-size: .95rem; font-weight: 500; }
+.const-convert { display: grid; gap: .3rem; }
+.const-convert .label { font-size: .85rem; color: var(--muted); font-weight: 600; }
+.const-convert .row { gap: .5rem; flex-wrap: wrap; }
+.const-convert input { flex: 1; min-width: 12rem; }
+.const-conv { min-height: 1.4rem; }
+.const-conv .error { color: var(--danger); }
+@media (max-width: 640px) {
+  .const-val { font-size: 1.15rem; }
+  .const-actions .btn { flex: 1 1 auto; justify-content: center; }
+}
+
+/* ---- Graphing: 2D | 3D switch and the 3D controls */
+.graph-host { display: grid; gap: 1rem; }
+.seg-bar { display: inline-flex; width: max-content; padding: .2rem; gap: .2rem; border-radius: 99px; box-shadow: var(--inset-sm); border: var(--bw) solid var(--line); }
+.seg-bar .seg { border: 0; background: none; color: var(--muted); font: inherit; font-weight: 600; padding: .3rem 1.1rem; border-radius: 99px; cursor: pointer; }
+.seg-bar .seg:hover { color: var(--accent-ink); }
+.seg-bar .seg.on { background: var(--bg); box-shadow: var(--raise-sm); color: var(--accent-ink); }
+.domain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; }
+.domain-grid .field input { padding: .3rem .45rem; font-size: .88rem; }
+.check { display: inline-flex; align-items: center; gap: .4rem; font-size: .88rem; cursor: pointer; }
+.export-row:empty { display: none; }
+.graph3d .layer input[type=range] { width: 100%; }
+.graph3d .layer .sub { align-items: end; }
+
+/* ---- Save as SGEO / SDRW (views/spatial-export.ts) */
+.export-row { gap: .5rem; align-items: center; }
+.export-row .inline-unit { display: inline-flex; align-items: center; gap: .35rem; margin-left: auto; }
+.export-summary { display: grid; gap: .8rem; min-width: 0; }
+.export-summary dl { display: grid; grid-template-columns: max-content 1fr; gap: .3rem .9rem; margin: 0; }
+.export-summary dt { color: var(--muted); }
+.export-summary dd { margin: 0; overflow-wrap: anywhere; }
+.export-block h3 { margin: 0 0 .25rem; font-size: .95rem; }
+.export-block ul { margin: 0; padding-left: 1.2rem; display: grid; gap: .2rem; }
+.export-banner { margin: 0; padding: .55rem .75rem; border: var(--bw) solid var(--accent); border-radius: var(--radius-sm); background: var(--bg); }
+@media (max-width: 560px) { .export-summary dl { grid-template-columns: 1fr; } .export-row .inline-unit { margin-left: 0; } }

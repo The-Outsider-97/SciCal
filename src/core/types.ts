@@ -73,8 +73,18 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = { angle: 'rad', complex: false, digits: 12, notation: 'auto', result: 'auto', units: false, thousands: false };
 
-export type Workspace = 'math' | 'graph' | 'chemistry' | 'biology' | 'measurement' | 'formulas';
+export type Workspace = 'math' | 'graph' | 'chemistry' | 'biology' | 'measurement' | 'formulas' | 'finance' | 'constants';
 export type EntryKind = 'calc' | 'domain' | 'graph' | 'formula' | 'note';
+
+/** The picture a graph entry was drawn as (what the person saw), kept with the entry so an SLDC export shows it. */
+export interface GraphFigure {
+  mediaType: 'image/png';
+  data: string;                                    // base64
+  width?: number;
+  height?: number;
+  transparent: boolean;
+  series: Array<{ id: string; color: string | null; dash: 'solid' | 'dash' | 'dot' | 'dashdot' }>;
+}
 
 export interface Entry {
   id: string;
@@ -91,6 +101,7 @@ export interface Entry {
   settings?: Record<string, unknown>;
   result?: Record<string, unknown>;
   summary?: Record<string, unknown>;
+  figure?: GraphFigure;
   defines?: string[];
   ok?: boolean;
 }
@@ -118,6 +129,11 @@ export interface Prefs {
   lastSession?: string;
   complex?: boolean;
   keypad?: string;
+  /** The person's own financial assumptions (defaults for the Finance forms; not constants). null removes one. */
+  finCurrency?: string | null;
+  finPlaces?: number | null;
+  finDiscountRate?: number | null;
+  finInflation?: number | null;
 }
 
 // ------------------------------------------------------------------------------------------------------------------ forms
@@ -199,3 +215,40 @@ export interface LayerResult {
 }
 
 export interface GraphResult { ok: boolean; view: View; layers: LayerResult[]; angle?: string; numeric?: string; error?: ApiErrorBody }
+
+// ------------------------------------------------------------------------------------------------------------------ 3D graphing (scical-graph/1)
+export interface Bounds3D { xmin: number; xmax: number; ymin: number; ymax: number; zmin: number; zmax: number }
+export interface Axis3D { label: string; unit: string }
+
+/** One layer of a 3D scene as sampled by the service: the definition (what the person wrote) and the sampled geometry (what is drawn). */
+export interface Layer3Result {
+  id: string;
+  ok: boolean;
+  type?: string;                                   // surface | psurface | curve3d | points3d | hidden
+  label?: string;
+  error?: ApiErrorBody;
+  definition?: Record<string, unknown>;
+  style?: { color?: string; opacity?: number; wireframe?: boolean; mesh?: boolean; colorBy?: string };
+  grid?: { nu: number; nv: number };
+  vertices?: number[];                             // x, y, z of every vertex, flat
+  cells?: number[];                                // four vertex indices per cell: a, b, d, c
+  normals?: number[];                              // area-weighted vertex normals, flat
+  segments?: number[][];                           // curves: one flat x, y, z list per unbroken piece
+  points?: number[];
+  stats?: Record<string, number>;
+  zrange?: [number, number] | null;
+  warnings?: string[];
+}
+
+export interface Scene3Result {
+  ok: boolean;
+  mode: '3d';
+  contract: string;
+  layers: Layer3Result[];
+  bounds: Bounds3D | null;
+  angle?: string;
+  axes: Record<'x' | 'y' | 'z', Axis3D>;
+  numeric?: string;
+  triangulation?: string;
+  error?: ApiErrorBody;
+}

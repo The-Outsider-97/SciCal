@@ -1,7 +1,7 @@
 // The Graphing workspace: layers of curves and data on a canvas that can be panned, zoomed and traced, with analysis tools.
 import { formatNumber, formatTick, mapper, nearest, pan, paletteColor, PRESETS, sane, square, ticks, traceAt, zoomAt, type Mapper } from '../../core/graphmath.js';
 import { newEntryId } from '../../core/session.js';
-import type { Entry, GraphResult, LayerResult, LayerSpec, Pt, View } from '../../core/types.js';
+import type { Entry, GraphFigure, GraphResult, LayerResult, LayerSpec, Pt, View } from '../../core/types.js';
 import { clamp, debounce, isRecord, splitList, splitPairs } from '../../core/util.js';
 import { ApiError, api } from '../api.js';
 import { h, replace } from '../dom.js';
@@ -11,9 +11,11 @@ import { store } from '../store.js';
 import { dialog, glyph, iconButton, saveBlob, toast } from '../ui.js';
 import type { NavRequest, WorkspaceView } from '../shell.js';
 import { savedList } from './saved.js';
+import { missingName, paintSliderBox, type Param } from './sliders.js';
+import { exportControls } from './spatial-export.js';
 
 interface LayerUI extends LayerSpec { color: string; data?: string; fitModel?: string; info?: string }
-interface Param { name: string; value: number; min: number; max: number; step: number }
+const is3d = (e: Entry): boolean => isRecord(e.spec) && e.spec.mode === '3d';
 interface Marker { x: number; y: number; label: string }
 interface Tangent { slope: number; intercept: number; x: number; y: number; latex?: string; equation?: string }
 
@@ -125,9 +127,8 @@ export function createGraphView(): WorkspaceView {
     let added = false;
     for (const lr of res.layers) {
       if (lr.ok || !lr.error) continue;
-      const m = /^'([A-Za-z_]\w*)' has no value/.exec(lr.error.message);
-      if (!m) continue;
-      const name = m[1];
+      const name = missingName(lr.error.message);
+      if (!name) continue;
       if (params.some((p) => p.name === name) || dismissedParams.has(name)) continue;
       params.push({ name, value: 1, min: -10, max: 10, step: 0.1 });
       added = true;
@@ -138,6 +139,15 @@ export function createGraphView(): WorkspaceView {
   // ------------------------------------------------------------------------------------------------ drawing
   const css = (name: string): string => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
+  /** The colours a picture of the graph is drawn with. The screen uses the theme; the worksheet picture has no background and neutral ink. */
+  interface Ink { bg: string | null; grid: string; axis: string; text: string; accent: string; halo: string }
+  /** One drawing pass: which ink, whether the pointer's readout is drawn, and a dash pattern per layer (the export separates curves without colour). */
+  interface Pass { ink: Ink; hover: boolean; dashes: Map<string, number[]>; fontPx: number }
+  const screenInk = (): Ink => ({ bg: css('--plot-bg') || '#fff', grid: css('--plot-grid') || '#ccc', axis: css('--plot-axis') || '#333', text: css('--text') || '#000',
+    accent: css('--accent-ink') || '#b89b00', halo: css('--plot-bg') || '#fff' });
+  // A picture with no background is read on a white page, a sepia one and a dark one, so its ink is a middle grey that stays legible on all of them.
+  const EXPORT_INK: Ink = { bg: null, grid: 'rgba(118,128,142,.30)', axis: '#76808e', text: '#76808e', accent: '#a07f00', halo: 'rgba(255,255,255,0)' };
+
   const draw = (): void => {
     const dpr = window.devicePixelRatio || 1;
     const w = Math.max(1, Math.round(canvas.clientWidth));
@@ -146,15 +156,22 @@ export function createGraphView(): WorkspaceView {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const bg = css('--plot-bg') || '#fff';
-    const gridColor = css('--plot-grid') || '#ccc';
-    const axisColor = css('--plot-axis') || '#333';
-    const text = css('--text') || '#000';
-    const accent = css('--accent-ink') || '#b89b00';
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, w, hgt);
+    const live = paint(ctx, w, hgt, { ink: screenInk(), hover: true, dashes: new Map(), fontPx: 12 });
+    canvas.setAttribute('aria-label', live.length ? `Graph of ${live.join('; ')}. Use the arrow keys to move, plus and minus to zoom, and 0 to reset the view.` : 'Empty graph. Enter an expression on the left.');
+    paintViewInputs();
+    paintValues();
+  };
+
+  /** Draws the graph (grid, axes, layers, marks) at a logical size w x hgt. Used by the screen and by the worksheet picture, so they cannot differ. */
+  const paint = (ctx: CanvasRenderingContext2D, w: number, hgt: number, pass: Pass): string[] => {
+    const { ink } = pass;
+    const gridColor = ink.grid;
+    const axisColor = ink.axis;
+    const text = ink.text;
+    const accent = ink.accent;
+    if (ink.bg) { ctx.fillStyle = ink.bg; ctx.fillRect(0, 0, w, hgt); } else ctx.clearRect(0, 0, w, hgt);
     const m = mapper(view, w, hgt);
-    ctx.font = '12px system-ui, sans-serif';
+    ctx.font = `${pass.fontPx}px system-ui, sans-serif`;
 
     // grid, axes, labels
     const xt = ticks(view.xmin, view.xmax, Math.max(4, w / 90));
@@ -191,7 +208,7 @@ export function createGraphView(): WorkspaceView {
       result.layers.forEach((lr) => {
         const ui = layers.find((l) => l.id === lr.id);
         if (!ui || !lr.ok || lr.type === 'hidden') return;
-        drawLayer(ctx, m, lr, ui.color, w, hgt);
+        drawLayer(ctx, m, lr, ui.color, w, hgt, pass);
         if (lr.label) live.push(lr.label);
       });
     }
@@ -210,19 +227,17 @@ export function createGraphView(): WorkspaceView {
       const y = m.py(mk.y);
       if (x < -20 || x > w + 20 || y < -20 || y > hgt + 20) continue;
       ctx.strokeStyle = accent;
-      ctx.fillStyle = bg;
+      ctx.fillStyle = ink.bg ?? 'rgba(0,0,0,0)';
       ctx.lineWidth = 2.4;
       ctx.beginPath(); ctx.arc(x, y, 5.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       ctx.fillStyle = text;
-      ctx.font = '600 12px system-ui, sans-serif';
+      ctx.font = `600 ${pass.fontPx}px system-ui, sans-serif`;
       ctx.textAlign = x > w - 130 ? 'right' : 'left';
       ctx.textBaseline = 'bottom';
       ctx.fillText(mk.label, x + (x > w - 130 ? -9 : 9), y - 7);
     }
-    if (hover) drawHover(ctx, m, w, hgt);
-    canvas.setAttribute('aria-label', live.length ? `Graph of ${live.join('; ')}. Use the arrow keys to move, plus and minus to zoom, and 0 to reset the view.` : 'Empty graph. Enter an expression on the left.');
-    paintViewInputs();
-    paintValues();
+    if (pass.hover && hover) drawHover(ctx, m, w, hgt);
+    return live;
   };
 
   const strokeLines = (ctx: CanvasRenderingContext2D, m: Mapper, lines: Pt[][], color: string, dash: number[] = [], lw = 2.4): void => {
@@ -239,13 +254,14 @@ export function createGraphView(): WorkspaceView {
     ctx.setLineDash([]);
   };
 
-  const drawLayer = (ctx: CanvasRenderingContext2D, m: Mapper, lr: LayerResult, color: string, w: number, hgt: number): void => {
+  const drawLayer = (ctx: CanvasRenderingContext2D, m: Mapper, lr: LayerResult, color: string, w: number, hgt: number, pass: Pass): void => {
+    const dash = pass.dashes.get(lr.id) ?? [];
     switch (lr.type) {
       case 'function': case 'parametric': case 'polar':
         for (const a of lr.asymptotes ?? []) { ctx.strokeStyle = color; ctx.globalAlpha = .35; ctx.setLineDash([4, 5]); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(m.px(a), 0); ctx.lineTo(m.px(a), hgt); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
-        strokeLines(ctx, m, lr.segments ?? [], color);
+        strokeLines(ctx, m, lr.segments ?? [], color, dash);
         break;
-      case 'implicit': strokeLines(ctx, m, lr.polylines ?? [], color); break;
+      case 'implicit': strokeLines(ctx, m, lr.polylines ?? [], color, dash); break;
       case 'vline': ctx.strokeStyle = color; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(m.px(lr.x ?? 0), 0); ctx.lineTo(m.px(lr.x ?? 0), hgt); ctx.stroke(); break;
       case 'inequality': {
         ctx.fillStyle = color;
@@ -261,7 +277,7 @@ export function createGraphView(): WorkspaceView {
       case 'sequence': case 'scatter': {
         if (lr.fit) strokeLines(ctx, m, lr.fit.segments, color, [7, 5], 2.2);
         ctx.fillStyle = color;
-        ctx.strokeStyle = css('--plot-bg') || '#fff';
+        ctx.strokeStyle = pass.ink.halo;
         ctx.lineWidth = 1.5;
         for (const p of lr.points ?? []) { ctx.beginPath(); ctx.arc(m.px(p[0]), m.py(p[1]), 4.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
         break;
@@ -518,29 +534,11 @@ export function createGraphView(): WorkspaceView {
     }
   };
 
-  const paintSliders = (): void => {
-    replace(slidersBox, params.length ? params.map((p) => {
-      const range = h('input', { type: 'range', min: String(p.min), max: String(p.max), step: String(p.step), value: String(p.value), 'aria-label': `Value of ${p.name}` });
-      const val = h('span', { text: formatNumber(p.value, 5) });
-      range.addEventListener('input', () => { p.value = Number(range.value); val.textContent = formatNumber(p.value, 5); scheduleRender(); });
-      const bound = (key: 'min' | 'max'): HTMLInputElement => {
-        const i = h('input', { type: 'text', value: String(p[key]), 'aria-label': `${p.name} ${key === 'min' ? 'minimum' : 'maximum'}` });
-        i.addEventListener('change', () => {
-          const v = Number(i.value);
-          if (!Number.isFinite(v)) { i.value = String(p[key]); return; }
-          p[key] = v;
-          if (p.min >= p.max) { p.min = Math.min(p.min, p.max - 1); }
-          p.value = clamp(p.value, p.min, p.max);
-          p.step = Math.max((p.max - p.min) / 200, 1e-6);
-          paintSliders();
-          scheduleRender();
-        });
-        return i;
-      };
-      return h('div', { class: 'slider' }, h('div', { class: 'head' }, h('span', { text: `${p.name} =` }), val, iconButton('trash', `Remove the slider ${p.name}`, () => { params = params.filter((x) => x !== p); dismissedParams.add(p.name); paintSliders(); scheduleRender(); }, 'tiny')),
-        range, h('div', { class: 'bounds' }, bound('min'), h('span', { class: 'muted', text: 'to' }), bound('max')));
-    }) : h('p', { class: 'muted', text: 'Use a letter such as a in an expression (a*sin(x)) and a slider appears.' }));
-  };
+  const paintSliders = (): void => paintSliderBox(slidersBox, params, {
+    change: () => scheduleRender(),
+    remove: (p) => { params = params.filter((x) => x !== p); dismissedParams.add(p.name); paintSliders(); scheduleRender(); },
+    repaint: () => paintSliders(),
+  });
 
   // ------------------------------------------------------------------------------------------------ analysis
   const analysisLayerSel = h('select', { 'aria-label': 'Layer to analyse' });
@@ -654,16 +652,69 @@ export function createGraphView(): WorkspaceView {
     draw(); scheduleRender();
   };
 
+  const saveControls = exportControls({
+    defaultUnit: 'mm',
+    unitHint: 'A graph has no unit of its own: one graph unit is saved as one of these.',
+    items: [{ label: 'SDRW drawing', title: 'The graph as a 2D SDRW drawing: axes, grid, and each curve as a polyline, one drawing layer per graph layer', format: 'sdrw', source: '2d' }],
+    prepare: () => {
+      const active = layers.filter(hasContent);
+      if (!active.length || !result) return null;
+      const rect = canvas.getBoundingClientRect();
+      const spec = { viewport: view, width: clamp(Math.round(rect.width) || 800, 100, 4000), height: clamp(Math.round(rect.height) || 500, 100, 4000), params: paramValues(), layers: specLayers().filter((_, i) => hasContent(layers[i])) };
+      return { spec, settings: store.settings, context: contextFor(store.entries, ''), name: 'scical-graph', colors: Object.fromEntries(layers.map((l) => [l.id, l.color])) };
+    },
+  });
+
   const exportPng = (): void => {
     canvas.toBlob((blob) => { if (blob) saveBlob(blob, 'scical-graph.png'); else toast('The picture could not be created.', 'error'); }, 'image/png');
   };
 
-  const saveToWorksheet = (): void => {
+  // ------------------------------------------------------------------------------------------------ the worksheet picture
+  const DASHES: Array<{ name: 'solid' | 'dash' | 'dot' | 'dashdot'; pattern: number[] }> = [
+    { name: 'solid', pattern: [] }, { name: 'dash', pattern: [9, 5] }, { name: 'dot', pattern: [2, 5] }, { name: 'dashdot', pattern: [10, 4, 2, 4] },
+  ];
+  const EXPORT_WIDTH = 900;
+  const MAX_PICTURE_BYTES = 900_000;
+
+  /** The graph as it is on screen, drawn again for a document: transparent, neutral ink, and a line style per curve so it still reads in grayscale. */
+  const renderPicture = async (): Promise<GraphFigure | null> => {
+    const drawn = (result?.layers ?? []).filter((lr) => lr.ok && lr.type !== 'hidden' && layers.some((l) => l.id === lr.id));
+    if (!drawn.length) return null;
+    const aspect = clamp((canvas.clientHeight || 500) / (canvas.clientWidth || 800), 0.35, 1.1);
+    const w = EXPORT_WIDTH;
+    const hgt = Math.round(w * aspect);
+    // dashes are given to the curves only (points and bars keep their fill), in drawing order
+    const lined = drawn.filter((lr) => lr.type === 'function' || lr.type === 'parametric' || lr.type === 'polar' || lr.type === 'implicit');
+    const dashes = new Map<string, number[]>();
+    const names = new Map<string, 'solid' | 'dash' | 'dot' | 'dashdot'>();
+    lined.forEach((lr, i) => { const d = DASHES[i % DASHES.length]; dashes.set(lr.id, d.pattern); names.set(lr.id, d.name); });
+    for (const scale of [2, 1]) {
+      const c = document.createElement('canvas');
+      c.width = w * scale; c.height = hgt * scale;
+      const ctx = c.getContext('2d');
+      if (!ctx) return null;
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      paint(ctx, w, hgt, { ink: EXPORT_INK, hover: false, dashes, fontPx: 17 });
+      const blob = await new Promise<Blob | null>((ok) => c.toBlob(ok, 'image/png'));
+      if (!blob || (blob.size > MAX_PICTURE_BYTES && scale > 1)) continue;
+      if (blob.size > MAX_PICTURE_BYTES) return null;
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      let bin = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      return { mediaType: 'image/png', data: btoa(bin), width: c.width, height: c.height, transparent: true,
+        series: drawn.map((lr) => ({ id: lr.id, color: layers.find((l) => l.id === lr.id)?.color ?? null, dash: names.get(lr.id) ?? 'solid' })) };
+    }
+    return null;
+  };
+
+  const saveToWorksheet = async (): Promise<void> => {
     const exprs = layers.filter(hasContent).map((l) => l.expr ?? l.r ?? (l.x ? `(${l.x}, ${l.y})` : l.fx ? `(${l.fx}, ${l.fy})` : l.type)).join('; ');
     if (!exprs) { toast('Draw something first.', 'info'); return; }
+    let figure: GraphFigure | null = null;
+    try { figure = await renderPicture(); } catch { figure = null; }       // without a picture the entry still stores the functions
     store.addEntry({ kind: 'graph', workspace: 'graph', title: 'Graph', spec: { layers: layers.map((l) => ({ ...l })), viewport: view, params: params.map((p) => ({ ...p })) } as unknown as Record<string, unknown>,
-      summary: { ok: true, headline: `Graph of ${exprs}` }, ok: true });
-    toast('Graph added to the worksheet', 'ok', 2200);
+      summary: { ok: true, headline: `Graph of ${exprs}` }, ok: true, ...(figure ? { figure } : {}) });
+    toast(figure ? 'Graph added to the worksheet' : 'Graph added to the worksheet (without its picture)', figure ? 'ok' : 'info', 2200);
   };
 
   const paintValues = (): void => {
@@ -730,24 +781,25 @@ export function createGraphView(): WorkspaceView {
           h('button', { class: 'btn small', type: 'button', text: 'Clear marks', on: { click: () => { markers = []; tangent = null; pinned = null; replace(analysisOut); draw(); } } }),
           h('span', { class: 'grow' }),
           h('button', { class: 'btn small', type: 'button', text: 'Save PNG', on: { click: exportPng } }),
-          h('button', { class: 'btn small', type: 'button', text: 'Add to worksheet', on: { click: saveToWorksheet } })),
+          h('button', { class: 'btn small', type: 'button', text: 'Add to worksheet', on: { click: () => void saveToWorksheet() } })),
+        saveControls.el,
         wrap,
         h('div', { class: 'viewbox' }, ['xmin', 'xmax', 'ymin', 'ymax'].map((k) => h('label', null, k.replace('min', ' min').replace('max', ' max'), viewInputs[k as keyof typeof viewInputs]))),
         h('p', { class: 'muted', style: { margin: '0', 'font-size': '.82rem' }, text: 'Drag to move · scroll or pinch to zoom · double-click to zoom in · click a curve to mark a point · arrow keys, + and − work when the plot is focused.' }),
         valuesBox, live),
-      savedList('Saved in this worksheet', (e) => e.kind === 'graph' && !!e.spec, (e) => { if (e.spec) loadSpec(e.spec); })));
+      savedList('Saved in this worksheet', (e) => e.kind === 'graph' && !!e.spec && !is3d(e), (e) => { if (e.spec) loadSpec(e.spec); })));
 
   const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => { draw(); scheduleRender(); }) : null;
   ro?.observe(wrap);
   store.on('prefs', () => draw());
   new MutationObserver(() => draw()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   store.on('session', () => {
-    const last = [...store.entries].reverse().find((e: Entry) => e.kind === 'graph' && e.spec);
+    const last = [...store.entries].reverse().find((e: Entry) => e.kind === 'graph' && e.spec && !is3d(e));
     if (last?.spec) loadSpec(last.spec); else setExample({ title: '', layers: START });
   });
 
   // initial content
-  const last = [...store.entries].reverse().find((e: Entry) => e.kind === 'graph' && e.spec);
+  const last = [...store.entries].reverse().find((e: Entry) => e.kind === 'graph' && e.spec && !is3d(e));
   if (last?.spec) loadSpec(last.spec); else { for (const l of START) addLayer(l); paintLayers(); paintSliders(); }
   paintAnalysisSelects();
   const origRender = requestRender;

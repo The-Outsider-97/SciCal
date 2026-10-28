@@ -7,7 +7,7 @@ export function isNum(x: unknown): x is NumText {
 }
 
 const PREFERRED: Array<[string, string]> = [
-  ['result', ''], ['molarMass', 'M = '], ['balanced', ''], ['empirical', 'Empirical formula '], ['pH', 'pH = '], ['pressure', 'P = '], ['enthalpy', 'ΔH = '], ['deltaG', 'ΔG = '],
+  ['headline', ''], ['result', ''], ['molarMass', 'M = '], ['balanced', ''], ['empirical', 'Empirical formula '], ['pH', 'pH = '], ['pressure', 'P = '], ['enthalpy', 'ΔH = '], ['deltaG', 'ΔG = '],
   ['mean', 'mean = '], ['uncertainty', '± '], ['reported', ''], ['percentError', 'error = '], ['concentration', 'c = '], ['molarity', 'c = '], ['slope', 'slope = '],
   ['vmax', 'Vmax = '], ['gcContent', 'GC = '], ['phenotypeRatio', 'phenotype ratio '], ['verdict', ''], ['limiting', 'limiting reagent: '], ['p', 'p = '], ['protein', ''], ['velocity', 'v = '], ['count', ''], ['value', ''],
 ];
@@ -28,7 +28,7 @@ export function headlineOf(result: Record<string, unknown>): string {
   return 'Done';
 }
 
-const ACRONYMS: Record<string, string> = { gc: 'GC', od: 'OD', cfu: 'CFU', dna: 'DNA', rna: 'RNA', orf: 'ORF', si: 'SI', std: 'std', gravy: 'GRAVY', pi: 'pI', ice: 'ICE' };
+const ACRONYMS: Record<string, string> = { gc: 'GC', od: 'OD', cfu: 'CFU', dna: 'DNA', rna: 'RNA', orf: 'ORF', si: 'SI', std: 'std', gravy: 'GRAVY', pi: 'pI', ice: 'ICE', irr: 'IRR', irrs: 'IRRs', npv: 'NPV', roi: 'ROI', cagr: 'CAGR', dcf: 'DCF', apr: 'APR', cpi: 'CPI', mirr: 'MIRR', pv: 'PV', fv: 'FV' };
 
 /** "molarMass" -> "Molar mass", "pH" -> "pH", "gcContent" -> "GC content". */
 export function labelOf(key: string): string {

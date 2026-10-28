@@ -331,6 +331,7 @@ export function createMathView(): MathView {
   const open = (req: NavRequest): void => {
     const pl = req.payload;
     if (typeof pl.input === 'string') void run(pl.input, (isRecord(pl.settings) ? pl.settings : {}) as Partial<Settings>);
+    else if (typeof pl.insert === 'string') insertText(pl.insert);           // e.g. const(c) from the Constants page
   };
 
   return { el, focus: () => input.focus(), open, run, setInput };

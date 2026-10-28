@@ -4,9 +4,10 @@ import { formatNumber } from '../core/graphmath.js';
 import { isNum, isPoints, isRowList, labelOf, messageOf } from '../core/results.js';
 import type { FormOp, NumText } from '../core/types.js';
 import { isRecord } from '../core/util.js';
-import { chart } from './charts.js';
+import { chart, type Marker, type Series } from './charts.js';
 import { h, replace } from './dom.js';
 import { math } from './math-dom.js';
+import { navigate } from './shell.js';
 
 export interface ResultCtx {
   op: FormOp;
@@ -16,7 +17,7 @@ export interface ResultCtx {
 
 type R = Record<string, unknown>;
 
-const SKIP = new Set(['ok', 'steps', 'warnings', 'notes', 'meta', 'mode', 'pretty', 'latex', 'curve', 'line', 'residuals', 'catalogue', 'molecularPretty', 'solveFor']);
+const SKIP = new Set(['headline', 'plot', 'plot2', 'graph', 'graph2', 'assumptions', 'ok', 'steps', 'warnings', 'notes', 'meta', 'mode', 'pretty', 'latex', 'curve', 'line', 'residuals', 'catalogue', 'molecularPretty', 'solveFor']);
 const LEAD = ['balanced', 'empirical', 'formula', 'equation'];
 const MATH_COLS = new Set(['partial']);
 const HIDE_COLS = new Set(['pretty', 'latex', 'exact', 'valueExact', 'valueNumber', 'weightNote', 'configurationNote']);
@@ -133,6 +134,28 @@ function chartsFor(res: R, ctx: ResultCtx): HTMLElement[] {
   return out;
 }
 
+// Charts and Graphing hand-offs that any operation may attach: `plot` / `plot2` are small result charts, `graph` / `graph2` are specs for the Graphing workspace.
+function plotOf(v: unknown, name: string, ctx: ResultCtx): HTMLElement | null {
+  if (!isRecord(v) || !Array.isArray(v.series)) return null;
+  const series: Series[] = [];
+  for (const s of v.series) {
+    if (!isRecord(s) || !Array.isArray(s.points)) continue;
+    const pts = s.points.filter((p): p is [number, number] => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]));
+    if (pts.length) series.push({ label: String(s.label ?? ''), points: pts, kind: s.kind === 'scatter' ? 'scatter' : 'line', dashed: s.dashed === true });
+  }
+  if (!series.length) return null;
+  const markers: Marker[] = (Array.isArray(v.markers) ? v.markers : []).filter(isRecord).map((m) => ({ x: Number(m.x), y: Number(m.y), label: String(m.label ?? '') })).filter((m) => Number.isFinite(m.x) && Number.isFinite(m.y));
+  return chart({ title: String(v.title ?? 'Chart'), xLabel: String(v.xLabel ?? ''), yLabel: String(v.yLabel ?? ''), series, markers, zeroLine: v.zeroLine === true,
+    description: typeof v.description === 'string' ? v.description : undefined,
+    onExport: () => ctx.exportTable(`${ctx.op.id}-${name}`, ['series', 'x', 'y'], series.flatMap((s) => s.points.map((p) => [s.label, p[0], p[1]] as unknown[]))) });
+}
+
+function graphButton(spec: unknown, label: string): HTMLElement | null {
+  if (!isRecord(spec) || !Array.isArray(spec.layers) || !spec.layers.length) return null;
+  return h('button', { class: 'btn small', type: 'button', text: label, title: 'Opens this in the Graphing workspace with its sliders, so you can change the values and zoom.',
+    on: { click: () => void navigate({ workspace: 'graph', kind: 'graph', payload: { spec } }) } });
+}
+
 function pairsFrom(v: unknown): Array<[number, number]> {
   if (!Array.isArray(v)) return [];
   const out: Array<[number, number]> = [];
@@ -176,7 +199,13 @@ export function renderResult(res: R, ctx: ResultCtx, skip: Set<string> = new Set
   }
   if (cards.length) root.appendChild(h('div', { class: 'kvs' }, cards));
   for (const c of chartsFor(res, ctx)) root.appendChild(c);
+  const plots = [plotOf(res.plot, 'chart', ctx), plotOf(res.plot2, 'chart2', ctx)].filter((x): x is HTMLElement => x !== null);
+  for (const c of plots) root.appendChild(c);
+  const hands = [graphButton(res.graph, 'Open in Graphing'), graphButton(res.graph2, 'Open the second chart in Graphing')].filter((x): x is HTMLElement => x !== null);
+  if (hands.length) root.appendChild(h('div', { class: 'row graph-hand' }, hands));
   for (const s of sections) root.appendChild(s);
+  const assumptions = (Array.isArray(res.assumptions) ? res.assumptions : []).filter((x): x is string => typeof x === 'string');
+  if (assumptions.length) root.appendChild(h('div', { class: 'section assumptions' }, h('div', { class: 'sectitle', text: 'Assumptions and conventions' }), h('ul', { class: 'assume' }, assumptions.map((a) => h('li', { text: a })))));
   const warnings = (Array.isArray(res.warnings) ? res.warnings : []).map(messageOf).filter(Boolean);
   const notes = (Array.isArray(res.notes) ? res.notes : []).map(messageOf).filter(Boolean);
   if (warnings.length || notes.length) root.appendChild(h('div', { class: 'notes' }, [...warnings, ...notes].map((w) => h('div', { class: 'note-line', text: w }))));
