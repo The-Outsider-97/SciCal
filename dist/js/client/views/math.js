@@ -321,6 +321,8 @@ export function createMathView() {
         const pl = req.payload;
         if (typeof pl.input === 'string')
             void run(pl.input, (isRecord(pl.settings) ? pl.settings : {}));
+        else if (typeof pl.insert === 'string')
+            insertText(pl.insert); // e.g. const(c) from the Constants page
     };
     return { el, focus: () => input.focus(), open, run, setInput };
 }

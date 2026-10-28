@@ -40,7 +40,7 @@ export class Store {
         this.prefs = status.prefs ?? {};
         this.forms = forms.domains;
         const ws = this.prefs.workspace;
-        if (ws === 'math' || ws === 'chemistry' || ws === 'biology' || ws === 'measurement')
+        if (ws === 'math' || ws === 'chemistry' || ws === 'biology' || ws === 'measurement' || ws === 'finance' || ws === 'constants')
             this.workspace = ws;
         await this.openInitialSession();
     }
@@ -75,6 +75,9 @@ export class Store {
     }
     setPrefs(patch) {
         this.prefs = { ...this.prefs, ...patch };
+        for (const [k, v] of Object.entries(patch))
+            if (v === null)
+                delete this.prefs[k]; // null = removed
         this.prefsDirty = { ...this.prefsDirty, ...patch };
         this.flushPrefs();
         this.emit('prefs');

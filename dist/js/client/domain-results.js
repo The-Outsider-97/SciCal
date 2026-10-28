@@ -6,7 +6,8 @@ import { isRecord } from '../core/util.js';
 import { chart } from './charts.js';
 import { h, replace } from './dom.js';
 import { math } from './math-dom.js';
-const SKIP = new Set(['ok', 'steps', 'warnings', 'notes', 'meta', 'mode', 'pretty', 'latex', 'curve', 'line', 'residuals', 'catalogue', 'molecularPretty', 'solveFor']);
+import { navigate } from './shell.js';
+const SKIP = new Set(['headline', 'plot', 'plot2', 'graph', 'graph2', 'assumptions', 'ok', 'steps', 'warnings', 'notes', 'meta', 'mode', 'pretty', 'latex', 'curve', 'line', 'residuals', 'catalogue', 'molecularPretty', 'solveFor']);
 const LEAD = ['balanced', 'empirical', 'formula', 'equation'];
 const MATH_COLS = new Set(['partial']);
 const HIDE_COLS = new Set(['pretty', 'latex', 'exact', 'valueExact', 'valueNumber', 'weightNote', 'configurationNote']);
@@ -140,6 +141,31 @@ function chartsFor(res, ctx) {
     }
     return out;
 }
+// Charts and Graphing hand-offs that any operation may attach: `plot` / `plot2` are small result charts, `graph` / `graph2` are specs for the Graphing workspace.
+function plotOf(v, name, ctx) {
+    if (!isRecord(v) || !Array.isArray(v.series))
+        return null;
+    const series = [];
+    for (const s of v.series) {
+        if (!isRecord(s) || !Array.isArray(s.points))
+            continue;
+        const pts = s.points.filter((p) => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1]));
+        if (pts.length)
+            series.push({ label: String(s.label ?? ''), points: pts, kind: s.kind === 'scatter' ? 'scatter' : 'line', dashed: s.dashed === true });
+    }
+    if (!series.length)
+        return null;
+    const markers = (Array.isArray(v.markers) ? v.markers : []).filter(isRecord).map((m) => ({ x: Number(m.x), y: Number(m.y), label: String(m.label ?? '') })).filter((m) => Number.isFinite(m.x) && Number.isFinite(m.y));
+    return chart({ title: String(v.title ?? 'Chart'), xLabel: String(v.xLabel ?? ''), yLabel: String(v.yLabel ?? ''), series, markers, zeroLine: v.zeroLine === true,
+        description: typeof v.description === 'string' ? v.description : undefined,
+        onExport: () => ctx.exportTable(`${ctx.op.id}-${name}`, ['series', 'x', 'y'], series.flatMap((s) => s.points.map((p) => [s.label, p[0], p[1]]))) });
+}
+function graphButton(spec, label) {
+    if (!isRecord(spec) || !Array.isArray(spec.layers) || !spec.layers.length)
+        return null;
+    return h('button', { class: 'btn small', type: 'button', text: label, title: 'Opens this in the Graphing workspace with its sliders, so you can change the values and zoom.',
+        on: { click: () => void navigate({ workspace: 'graph', kind: 'graph', payload: { spec } }) } });
+}
 function pairsFrom(v) {
     if (!Array.isArray(v))
         return [];
@@ -210,8 +236,17 @@ export function renderResult(res, ctx, skip = new Set()) {
         root.appendChild(h('div', { class: 'kvs' }, cards));
     for (const c of chartsFor(res, ctx))
         root.appendChild(c);
+    const plots = [plotOf(res.plot, 'chart', ctx), plotOf(res.plot2, 'chart2', ctx)].filter((x) => x !== null);
+    for (const c of plots)
+        root.appendChild(c);
+    const hands = [graphButton(res.graph, 'Open in Graphing'), graphButton(res.graph2, 'Open the second chart in Graphing')].filter((x) => x !== null);
+    if (hands.length)
+        root.appendChild(h('div', { class: 'row graph-hand' }, hands));
     for (const s of sections)
         root.appendChild(s);
+    const assumptions = (Array.isArray(res.assumptions) ? res.assumptions : []).filter((x) => typeof x === 'string');
+    if (assumptions.length)
+        root.appendChild(h('div', { class: 'section assumptions' }, h('div', { class: 'sectitle', text: 'Assumptions and conventions' }), h('ul', { class: 'assume' }, assumptions.map((a) => h('li', { text: a })))));
     const warnings = (Array.isArray(res.warnings) ? res.warnings : []).map(messageOf).filter(Boolean);
     const notes = (Array.isArray(res.notes) ? res.notes : []).map(messageOf).filter(Boolean);
     if (warnings.length || notes.length)

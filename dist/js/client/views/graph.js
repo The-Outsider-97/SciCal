@@ -9,6 +9,9 @@ import { contextFor } from '../../core/session.js';
 import { store } from '../store.js';
 import { glyph, iconButton, saveBlob, toast } from '../ui.js';
 import { savedList } from './saved.js';
+import { missingName, paintSliderBox } from './sliders.js';
+import { exportControls } from './spatial-export.js';
+const is3d = (e) => isRecord(e.spec) && e.spec.mode === '3d';
 const LAYER_TYPES = [
     ['auto', 'y = f(x), equation or inequality'], ['parametric', 'Parametric (x(t), y(t))'], ['polar', 'Polar r(t)'], ['sequence', 'Sequence a(n)'],
     ['vectorfield', 'Vector field'], ['scatter', 'Data points (with fit)'], ['histogram', 'Histogram'],
@@ -125,10 +128,9 @@ export function createGraphView() {
         for (const lr of res.layers) {
             if (lr.ok || !lr.error)
                 continue;
-            const m = /^'([A-Za-z_]\w*)' has no value/.exec(lr.error.message);
-            if (!m)
+            const name = missingName(lr.error.message);
+            if (!name)
                 continue;
-            const name = m[1];
             if (params.some((p) => p.name === name) || dismissedParams.has(name))
                 continue;
             params.push({ name, value: 1, min: -10, max: 10, step: 0.1 });
@@ -141,6 +143,10 @@ export function createGraphView() {
     };
     // ------------------------------------------------------------------------------------------------ drawing
     const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const screenInk = () => ({ bg: css('--plot-bg') || '#fff', grid: css('--plot-grid') || '#ccc', axis: css('--plot-axis') || '#333', text: css('--text') || '#000',
+        accent: css('--accent-ink') || '#b89b00', halo: css('--plot-bg') || '#fff' });
+    // A picture with no background is read on a white page, a sepia one and a dark one, so its ink is a middle grey that stays legible on all of them.
+    const EXPORT_INK = { bg: null, grid: 'rgba(118,128,142,.30)', axis: '#76808e', text: '#76808e', accent: '#a07f00', halo: 'rgba(255,255,255,0)' };
     const draw = () => {
         const dpr = window.devicePixelRatio || 1;
         const w = Math.max(1, Math.round(canvas.clientWidth));
@@ -153,15 +159,26 @@ export function createGraphView() {
         if (!ctx)
             return;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        const bg = css('--plot-bg') || '#fff';
-        const gridColor = css('--plot-grid') || '#ccc';
-        const axisColor = css('--plot-axis') || '#333';
-        const text = css('--text') || '#000';
-        const accent = css('--accent-ink') || '#b89b00';
-        ctx.fillStyle = bg;
-        ctx.fillRect(0, 0, w, hgt);
+        const live = paint(ctx, w, hgt, { ink: screenInk(), hover: true, dashes: new Map(), fontPx: 12 });
+        canvas.setAttribute('aria-label', live.length ? `Graph of ${live.join('; ')}. Use the arrow keys to move, plus and minus to zoom, and 0 to reset the view.` : 'Empty graph. Enter an expression on the left.');
+        paintViewInputs();
+        paintValues();
+    };
+    /** Draws the graph (grid, axes, layers, marks) at a logical size w x hgt. Used by the screen and by the worksheet picture, so they cannot differ. */
+    const paint = (ctx, w, hgt, pass) => {
+        const { ink } = pass;
+        const gridColor = ink.grid;
+        const axisColor = ink.axis;
+        const text = ink.text;
+        const accent = ink.accent;
+        if (ink.bg) {
+            ctx.fillStyle = ink.bg;
+            ctx.fillRect(0, 0, w, hgt);
+        }
+        else
+            ctx.clearRect(0, 0, w, hgt);
         const m = mapper(view, w, hgt);
-        ctx.font = '12px system-ui, sans-serif';
+        ctx.font = `${pass.fontPx}px system-ui, sans-serif`;
         // grid, axes, labels
         const xt = ticks(view.xmin, view.xmax, Math.max(4, w / 90));
         const yt = ticks(view.ymin, view.ymax, Math.max(3, hgt / 70));
@@ -211,7 +228,7 @@ export function createGraphView() {
                 const ui = layers.find((l) => l.id === lr.id);
                 if (!ui || !lr.ok || lr.type === 'hidden')
                     return;
-                drawLayer(ctx, m, lr, ui.color, w, hgt);
+                drawLayer(ctx, m, lr, ui.color, w, hgt, pass);
                 if (lr.label)
                     live.push(lr.label);
             });
@@ -232,23 +249,21 @@ export function createGraphView() {
             if (x < -20 || x > w + 20 || y < -20 || y > hgt + 20)
                 continue;
             ctx.strokeStyle = accent;
-            ctx.fillStyle = bg;
+            ctx.fillStyle = ink.bg ?? 'rgba(0,0,0,0)';
             ctx.lineWidth = 2.4;
             ctx.beginPath();
             ctx.arc(x, y, 5.5, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
             ctx.fillStyle = text;
-            ctx.font = '600 12px system-ui, sans-serif';
+            ctx.font = `600 ${pass.fontPx}px system-ui, sans-serif`;
             ctx.textAlign = x > w - 130 ? 'right' : 'left';
             ctx.textBaseline = 'bottom';
             ctx.fillText(mk.label, x + (x > w - 130 ? -9 : 9), y - 7);
         }
-        if (hover)
+        if (pass.hover && hover)
             drawHover(ctx, m, w, hgt);
-        canvas.setAttribute('aria-label', live.length ? `Graph of ${live.join('; ')}. Use the arrow keys to move, plus and minus to zoom, and 0 to reset the view.` : 'Empty graph. Enter an expression on the left.');
-        paintViewInputs();
-        paintValues();
+        return live;
     };
     const strokeLines = (ctx, m, lines, color, dash = [], lw = 2.4) => {
         ctx.strokeStyle = color;
@@ -266,7 +281,8 @@ export function createGraphView() {
         ctx.stroke();
         ctx.setLineDash([]);
     };
-    const drawLayer = (ctx, m, lr, color, w, hgt) => {
+    const drawLayer = (ctx, m, lr, color, w, hgt, pass) => {
+        const dash = pass.dashes.get(lr.id) ?? [];
         switch (lr.type) {
             case 'function':
             case 'parametric':
@@ -283,10 +299,10 @@ export function createGraphView() {
                     ctx.setLineDash([]);
                     ctx.globalAlpha = 1;
                 }
-                strokeLines(ctx, m, lr.segments ?? [], color);
+                strokeLines(ctx, m, lr.segments ?? [], color, dash);
                 break;
             case 'implicit':
-                strokeLines(ctx, m, lr.polylines ?? [], color);
+                strokeLines(ctx, m, lr.polylines ?? [], color, dash);
                 break;
             case 'vline':
                 ctx.strokeStyle = color;
@@ -312,7 +328,7 @@ export function createGraphView() {
                 if (lr.fit)
                     strokeLines(ctx, m, lr.fit.segments, color, [7, 5], 2.2);
                 ctx.fillStyle = color;
-                ctx.strokeStyle = css('--plot-bg') || '#fff';
+                ctx.strokeStyle = pass.ink.halo;
                 ctx.lineWidth = 1.5;
                 for (const p of lr.points ?? []) {
                     ctx.beginPath();
@@ -615,33 +631,11 @@ export function createGraphView() {
             }
         }
     };
-    const paintSliders = () => {
-        replace(slidersBox, params.length ? params.map((p) => {
-            const range = h('input', { type: 'range', min: String(p.min), max: String(p.max), step: String(p.step), value: String(p.value), 'aria-label': `Value of ${p.name}` });
-            const val = h('span', { text: formatNumber(p.value, 5) });
-            range.addEventListener('input', () => { p.value = Number(range.value); val.textContent = formatNumber(p.value, 5); scheduleRender(); });
-            const bound = (key) => {
-                const i = h('input', { type: 'text', value: String(p[key]), 'aria-label': `${p.name} ${key === 'min' ? 'minimum' : 'maximum'}` });
-                i.addEventListener('change', () => {
-                    const v = Number(i.value);
-                    if (!Number.isFinite(v)) {
-                        i.value = String(p[key]);
-                        return;
-                    }
-                    p[key] = v;
-                    if (p.min >= p.max) {
-                        p.min = Math.min(p.min, p.max - 1);
-                    }
-                    p.value = clamp(p.value, p.min, p.max);
-                    p.step = Math.max((p.max - p.min) / 200, 1e-6);
-                    paintSliders();
-                    scheduleRender();
-                });
-                return i;
-            };
-            return h('div', { class: 'slider' }, h('div', { class: 'head' }, h('span', { text: `${p.name} =` }), val, iconButton('trash', `Remove the slider ${p.name}`, () => { params = params.filter((x) => x !== p); dismissedParams.add(p.name); paintSliders(); scheduleRender(); }, 'tiny')), range, h('div', { class: 'bounds' }, bound('min'), h('span', { class: 'muted', text: 'to' }), bound('max')));
-        }) : h('p', { class: 'muted', text: 'Use a letter such as a in an expression (a*sin(x)) and a slider appears.' }));
-    };
+    const paintSliders = () => paintSliderBox(slidersBox, params, {
+        change: () => scheduleRender(),
+        remove: (p) => { params = params.filter((x) => x !== p); dismissedParams.add(p.name); paintSliders(); scheduleRender(); },
+        repaint: () => paintSliders(),
+    });
     // ------------------------------------------------------------------------------------------------ analysis
     const analysisLayerSel = h('select', { 'aria-label': 'Layer to analyse' });
     const analysisLayer2Sel = h('select', { 'aria-label': 'Second layer for intersections' });
@@ -790,21 +784,83 @@ export function createGraphView() {
         draw();
         scheduleRender();
     };
+    const saveControls = exportControls({
+        defaultUnit: 'mm',
+        unitHint: 'A graph has no unit of its own: one graph unit is saved as one of these.',
+        items: [{ label: 'SDRW drawing', title: 'The graph as a 2D SDRW drawing: axes, grid, and each curve as a polyline, one drawing layer per graph layer', format: 'sdrw', source: '2d' }],
+        prepare: () => {
+            const active = layers.filter(hasContent);
+            if (!active.length || !result)
+                return null;
+            const rect = canvas.getBoundingClientRect();
+            const spec = { viewport: view, width: clamp(Math.round(rect.width) || 800, 100, 4000), height: clamp(Math.round(rect.height) || 500, 100, 4000), params: paramValues(), layers: specLayers().filter((_, i) => hasContent(layers[i])) };
+            return { spec, settings: store.settings, context: contextFor(store.entries, ''), name: 'scical-graph', colors: Object.fromEntries(layers.map((l) => [l.id, l.color])) };
+        },
+    });
     const exportPng = () => {
         canvas.toBlob((blob) => { if (blob)
             saveBlob(blob, 'scical-graph.png');
         else
             toast('The picture could not be created.', 'error'); }, 'image/png');
     };
-    const saveToWorksheet = () => {
+    // ------------------------------------------------------------------------------------------------ the worksheet picture
+    const DASHES = [
+        { name: 'solid', pattern: [] }, { name: 'dash', pattern: [9, 5] }, { name: 'dot', pattern: [2, 5] }, { name: 'dashdot', pattern: [10, 4, 2, 4] },
+    ];
+    const EXPORT_WIDTH = 900;
+    const MAX_PICTURE_BYTES = 900_000;
+    /** The graph as it is on screen, drawn again for a document: transparent, neutral ink, and a line style per curve so it still reads in grayscale. */
+    const renderPicture = async () => {
+        const drawn = (result?.layers ?? []).filter((lr) => lr.ok && lr.type !== 'hidden' && layers.some((l) => l.id === lr.id));
+        if (!drawn.length)
+            return null;
+        const aspect = clamp((canvas.clientHeight || 500) / (canvas.clientWidth || 800), 0.35, 1.1);
+        const w = EXPORT_WIDTH;
+        const hgt = Math.round(w * aspect);
+        // dashes are given to the curves only (points and bars keep their fill), in drawing order
+        const lined = drawn.filter((lr) => lr.type === 'function' || lr.type === 'parametric' || lr.type === 'polar' || lr.type === 'implicit');
+        const dashes = new Map();
+        const names = new Map();
+        lined.forEach((lr, i) => { const d = DASHES[i % DASHES.length]; dashes.set(lr.id, d.pattern); names.set(lr.id, d.name); });
+        for (const scale of [2, 1]) {
+            const c = document.createElement('canvas');
+            c.width = w * scale;
+            c.height = hgt * scale;
+            const ctx = c.getContext('2d');
+            if (!ctx)
+                return null;
+            ctx.setTransform(scale, 0, 0, scale, 0, 0);
+            paint(ctx, w, hgt, { ink: EXPORT_INK, hover: false, dashes, fontPx: 17 });
+            const blob = await new Promise((ok) => c.toBlob(ok, 'image/png'));
+            if (!blob || (blob.size > MAX_PICTURE_BYTES && scale > 1))
+                continue;
+            if (blob.size > MAX_PICTURE_BYTES)
+                return null;
+            const bytes = new Uint8Array(await blob.arrayBuffer());
+            let bin = '';
+            for (let i = 0; i < bytes.length; i += 0x8000)
+                bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+            return { mediaType: 'image/png', data: btoa(bin), width: c.width, height: c.height, transparent: true,
+                series: drawn.map((lr) => ({ id: lr.id, color: layers.find((l) => l.id === lr.id)?.color ?? null, dash: names.get(lr.id) ?? 'solid' })) };
+        }
+        return null;
+    };
+    const saveToWorksheet = async () => {
         const exprs = layers.filter(hasContent).map((l) => l.expr ?? l.r ?? (l.x ? `(${l.x}, ${l.y})` : l.fx ? `(${l.fx}, ${l.fy})` : l.type)).join('; ');
         if (!exprs) {
             toast('Draw something first.', 'info');
             return;
         }
+        let figure = null;
+        try {
+            figure = await renderPicture();
+        }
+        catch {
+            figure = null;
+        } // without a picture the entry still stores the functions
         store.addEntry({ kind: 'graph', workspace: 'graph', title: 'Graph', spec: { layers: layers.map((l) => ({ ...l })), viewport: view, params: params.map((p) => ({ ...p })) },
-            summary: { ok: true, headline: `Graph of ${exprs}` }, ok: true });
-        toast('Graph added to the worksheet', 'ok', 2200);
+            summary: { ok: true, headline: `Graph of ${exprs}` }, ok: true, ...(figure ? { figure } : {}) });
+        toast(figure ? 'Graph added to the worksheet' : 'Graph added to the worksheet (without its picture)', figure ? 'ok' : 'info', 2200);
     };
     const paintValues = () => {
         const first = (result?.layers ?? []).find((lr) => lr.ok && lr.type === 'function' && lr.segments);
@@ -859,21 +915,21 @@ export function createGraphView() {
     const el = h('div', { class: 'graph' }, h('div', { class: 'graph-side' }, h('section', { class: 'card', 'aria-label': 'Layers' }, h('div', { class: 'card-head' }, h('h2', { text: 'Graph' }), h('div', { class: 'row' }, h('button', { class: 'btn small primary', type: 'button', text: 'Add', on: { click: () => { addLayer({ expr: '' }); paintLayers(); layersBox.querySelector('.layer:last-child input.mono')?.focus(); } } }), h('select', { 'aria-label': 'Add another kind of layer', style: { width: 'auto' }, on: { change: (ev) => { const s = ev.target; if (s.value) {
                 addLayer({ type: s.value });
                 paintLayers();
-            } s.value = ''; } } }, h('option', { value: '', text: 'More…' }), LAYER_TYPES.slice(1).map(([v, t]) => h('option', { value: v, text: t }))))), layersBox), h('section', { class: 'card', 'aria-label': 'Sliders' }, h('div', { class: 'card-head' }, h('h3', { text: 'Sliders' })), slidersBox), h('section', { class: 'card analysis', 'aria-label': 'Analysis' }, h('div', { class: 'card-head' }, h('h3', { text: 'Analyse' })), field('Function', analysisLayerSel), field('Second function (intersections)', analysisLayer2Sel), h('div', { class: 'sub', style: { display: 'grid', 'grid-template-columns': '1fr 1fr', gap: '.45rem' } }, aInput, bInput), xInput, h('div', { class: 'row' }, analysisBtn('Roots', 'roots'), analysisBtn('Max / min', 'extrema'), analysisBtn('Intersections', 'intersection'), analysisBtn('Integral', 'integral'), analysisBtn('Value at x', 'value'), analysisBtn('Tangent', 'tangent')), analysisOut, h('p', { class: 'muted', style: { 'font-size': '.8rem', margin: '0' }, text: 'Roots, extrema, intersections and integrals are found numerically (approximate). The tangent line uses the exact derivative.' })), h('section', { class: 'card', 'aria-label': 'Examples' }, h('div', { class: 'card-head' }, h('h3', { text: 'Examples' })), h('div', { class: 'chips' }, EXAMPLES.map((ex) => h('button', { class: 'chip', type: 'button', text: ex.title, on: { click: () => setExample(ex) } }))))), h('div', { class: 'graph-main', style: { display: 'grid', gap: '1rem', 'min-width': '0' } }, h('section', { class: 'card plot-card', 'aria-label': 'Plot' }, h('div', { class: 'plot-tools' }, iconButton('plus', 'Zoom in', () => { view = zoomAt(view, .5, .5, 0.7); draw(); scheduleRender(); }), h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Zoom out', title: 'Zoom out', on: { click: () => { view = zoomAt(view, .5, .5, 1.4); draw(); scheduleRender(); } } }, h('span', { text: '−', style: { 'font-size': '1.3rem' } })), h('button', { class: 'btn small', type: 'button', text: 'Standard', on: { click: () => { view = { ...PRESETS.standard }; draw(); scheduleRender(); } } }), h('button', { class: 'btn small', type: 'button', text: 'Trig', on: { click: () => { view = { ...PRESETS.trig }; draw(); scheduleRender(); } } }), h('button', { class: 'btn small', type: 'button', title: 'Same scale on both axes', text: 'Square', on: { click: () => { const r = rectOf(); view = square(view, r.width, r.height); draw(); scheduleRender(); } } }), h('button', { class: 'btn small', type: 'button', text: 'Fit', title: 'Fit the height to the curves', on: { click: fitView } }), h('button', { class: 'btn small', type: 'button', text: 'Clear marks', on: { click: () => { markers = []; tangent = null; pinned = null; replace(analysisOut); draw(); } } }), h('span', { class: 'grow' }), h('button', { class: 'btn small', type: 'button', text: 'Save PNG', on: { click: exportPng } }), h('button', { class: 'btn small', type: 'button', text: 'Add to worksheet', on: { click: saveToWorksheet } })), wrap, h('div', { class: 'viewbox' }, ['xmin', 'xmax', 'ymin', 'ymax'].map((k) => h('label', null, k.replace('min', ' min').replace('max', ' max'), viewInputs[k]))), h('p', { class: 'muted', style: { margin: '0', 'font-size': '.82rem' }, text: 'Drag to move · scroll or pinch to zoom · double-click to zoom in · click a curve to mark a point · arrow keys, + and − work when the plot is focused.' }), valuesBox, live), savedList('Saved in this worksheet', (e) => e.kind === 'graph' && !!e.spec, (e) => { if (e.spec)
+            } s.value = ''; } } }, h('option', { value: '', text: 'More…' }), LAYER_TYPES.slice(1).map(([v, t]) => h('option', { value: v, text: t }))))), layersBox), h('section', { class: 'card', 'aria-label': 'Sliders' }, h('div', { class: 'card-head' }, h('h3', { text: 'Sliders' })), slidersBox), h('section', { class: 'card analysis', 'aria-label': 'Analysis' }, h('div', { class: 'card-head' }, h('h3', { text: 'Analyse' })), field('Function', analysisLayerSel), field('Second function (intersections)', analysisLayer2Sel), h('div', { class: 'sub', style: { display: 'grid', 'grid-template-columns': '1fr 1fr', gap: '.45rem' } }, aInput, bInput), xInput, h('div', { class: 'row' }, analysisBtn('Roots', 'roots'), analysisBtn('Max / min', 'extrema'), analysisBtn('Intersections', 'intersection'), analysisBtn('Integral', 'integral'), analysisBtn('Value at x', 'value'), analysisBtn('Tangent', 'tangent')), analysisOut, h('p', { class: 'muted', style: { 'font-size': '.8rem', margin: '0' }, text: 'Roots, extrema, intersections and integrals are found numerically (approximate). The tangent line uses the exact derivative.' })), h('section', { class: 'card', 'aria-label': 'Examples' }, h('div', { class: 'card-head' }, h('h3', { text: 'Examples' })), h('div', { class: 'chips' }, EXAMPLES.map((ex) => h('button', { class: 'chip', type: 'button', text: ex.title, on: { click: () => setExample(ex) } }))))), h('div', { class: 'graph-main', style: { display: 'grid', gap: '1rem', 'min-width': '0' } }, h('section', { class: 'card plot-card', 'aria-label': 'Plot' }, h('div', { class: 'plot-tools' }, iconButton('plus', 'Zoom in', () => { view = zoomAt(view, .5, .5, 0.7); draw(); scheduleRender(); }), h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Zoom out', title: 'Zoom out', on: { click: () => { view = zoomAt(view, .5, .5, 1.4); draw(); scheduleRender(); } } }, h('span', { text: '−', style: { 'font-size': '1.3rem' } })), h('button', { class: 'btn small', type: 'button', text: 'Standard', on: { click: () => { view = { ...PRESETS.standard }; draw(); scheduleRender(); } } }), h('button', { class: 'btn small', type: 'button', text: 'Trig', on: { click: () => { view = { ...PRESETS.trig }; draw(); scheduleRender(); } } }), h('button', { class: 'btn small', type: 'button', title: 'Same scale on both axes', text: 'Square', on: { click: () => { const r = rectOf(); view = square(view, r.width, r.height); draw(); scheduleRender(); } } }), h('button', { class: 'btn small', type: 'button', text: 'Fit', title: 'Fit the height to the curves', on: { click: fitView } }), h('button', { class: 'btn small', type: 'button', text: 'Clear marks', on: { click: () => { markers = []; tangent = null; pinned = null; replace(analysisOut); draw(); } } }), h('span', { class: 'grow' }), h('button', { class: 'btn small', type: 'button', text: 'Save PNG', on: { click: exportPng } }), h('button', { class: 'btn small', type: 'button', text: 'Add to worksheet', on: { click: () => void saveToWorksheet() } })), saveControls.el, wrap, h('div', { class: 'viewbox' }, ['xmin', 'xmax', 'ymin', 'ymax'].map((k) => h('label', null, k.replace('min', ' min').replace('max', ' max'), viewInputs[k]))), h('p', { class: 'muted', style: { margin: '0', 'font-size': '.82rem' }, text: 'Drag to move · scroll or pinch to zoom · double-click to zoom in · click a curve to mark a point · arrow keys, + and − work when the plot is focused.' }), valuesBox, live), savedList('Saved in this worksheet', (e) => e.kind === 'graph' && !!e.spec && !is3d(e), (e) => { if (e.spec)
         loadSpec(e.spec); })));
     const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => { draw(); scheduleRender(); }) : null;
     ro?.observe(wrap);
     store.on('prefs', () => draw());
     new MutationObserver(() => draw()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     store.on('session', () => {
-        const last = [...store.entries].reverse().find((e) => e.kind === 'graph' && e.spec);
+        const last = [...store.entries].reverse().find((e) => e.kind === 'graph' && e.spec && !is3d(e));
         if (last?.spec)
             loadSpec(last.spec);
         else
             setExample({ title: '', layers: START });
     });
     // initial content
-    const last = [...store.entries].reverse().find((e) => e.kind === 'graph' && e.spec);
+    const last = [...store.entries].reverse().find((e) => e.kind === 'graph' && e.spec && !is3d(e));
     if (last?.spec)
         loadSpec(last.spec);
     else {

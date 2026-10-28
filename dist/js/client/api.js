@@ -105,6 +105,13 @@ export class Api {
     graph(op, spec, settings, context, signal) {
         return this.compute('/api/graph', { op, spec, settings, context }, signal);
     }
+    /** Save the graph as an SGEO or SDRW file with SLAI's own writers. Failures (nothing to save, a bad unit) throw an ApiError with the service's reason. */
+    async exportGraph(body) {
+        const res = await this.send('POST', '/api/graph/export', body);
+        if (!res.ok)
+            return this.fail(res);
+        return (await res.json());
+    }
     sessions() { return this.data('GET', '/api/sessions'); }
     createSession(name, workspace = 'math', settings) { return this.data('POST', '/api/sessions', { name, workspace, settings }); }
     importSession(doc) { return this.data('POST', '/api/sessions', { import: doc }); }

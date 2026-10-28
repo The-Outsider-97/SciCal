@@ -11,6 +11,8 @@ const TABS = [
     { id: 'biology', title: 'Biology', icon: 'biology' },
     { id: 'measurement', title: 'Measurement', icon: 'measurement' },
     { id: 'formulas', title: 'Formulas', icon: 'formulas' },
+    { id: 'finance', title: 'Finance', icon: 'finance' },
+    { id: 'constants', title: 'Constants', icon: 'constants' },
 ];
 const factories = {};
 const views = new Map();

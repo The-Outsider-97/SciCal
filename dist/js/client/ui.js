@@ -1,7 +1,7 @@
 // Shared interface pieces: toasts, modal dialogs, icons, clipboard and file download.
 import { h, s, clear } from './dom.js';
 // ------------------------------------------------------------------------------------------------------------------ icons
-const ASSET_ICONS = { math: 'SciCal.png', chemistry: 'chemistry.png', biology: 'Biology.png', measurement: 'measurment.png', logo: 'logo.png' };
+const ASSET_ICONS = { math: 'SciCal.png', chemistry: 'chemistry.png', biology: 'Biology.png', measurement: 'measurment.png', finance: 'economy.png', logo: 'logo.png' };
 /** Gold icons from the SLAI-wide assets folder, drawn as masks so they follow the theme colour. */
 export function assetIcon(name, cls = '') {
     const file = ASSET_ICONS[name];
@@ -31,6 +31,7 @@ const GLYPHS = {
     eye: ['M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z', 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'],
     eyeoff: ['M3 3l18 18', 'M10 6.2A9 9 0 0 1 12 6c6 0 10 6 10 6a17 17 0 0 1-3.2 3.6', 'M6.2 7.4A17 17 0 0 0 2 12s4 6 10 6c1.4 0 2.7-.3 3.8-.8'],
     play: ['M7 5l12 7-12 7z'],
+    constants: ['M5 7h14', 'M9 7v11', 'M15 7c0 6 .2 9 3 11'],
     link: ['M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1', 'M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1'],
 };
 export function glyph(name, cls = '') {

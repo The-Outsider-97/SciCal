@@ -3,7 +3,7 @@ export function isNum(x) {
     return isRecord(x) && typeof x.text === 'string' && typeof x.latex === 'string';
 }
 const PREFERRED = [
-    ['result', ''], ['molarMass', 'M = '], ['balanced', ''], ['empirical', 'Empirical formula '], ['pH', 'pH = '], ['pressure', 'P = '], ['enthalpy', 'ΔH = '], ['deltaG', 'ΔG = '],
+    ['headline', ''], ['result', ''], ['molarMass', 'M = '], ['balanced', ''], ['empirical', 'Empirical formula '], ['pH', 'pH = '], ['pressure', 'P = '], ['enthalpy', 'ΔH = '], ['deltaG', 'ΔG = '],
     ['mean', 'mean = '], ['uncertainty', '± '], ['reported', ''], ['percentError', 'error = '], ['concentration', 'c = '], ['molarity', 'c = '], ['slope', 'slope = '],
     ['vmax', 'Vmax = '], ['gcContent', 'GC = '], ['phenotypeRatio', 'phenotype ratio '], ['verdict', ''], ['limiting', 'limiting reagent: '], ['p', 'p = '], ['protein', ''], ['velocity', 'v = '], ['count', ''], ['value', ''],
 ];
@@ -27,7 +27,7 @@ export function headlineOf(result) {
         return `${rows.length} row${rows.length === 1 ? '' : 's'}`;
     return 'Done';
 }
-const ACRONYMS = { gc: 'GC', od: 'OD', cfu: 'CFU', dna: 'DNA', rna: 'RNA', orf: 'ORF', si: 'SI', std: 'std', gravy: 'GRAVY', pi: 'pI', ice: 'ICE' };
+const ACRONYMS = { gc: 'GC', od: 'OD', cfu: 'CFU', dna: 'DNA', rna: 'RNA', orf: 'ORF', si: 'SI', std: 'std', gravy: 'GRAVY', pi: 'pI', ice: 'ICE', irr: 'IRR', irrs: 'IRRs', npv: 'NPV', roi: 'ROI', cagr: 'CAGR', dcf: 'DCF', apr: 'APR', cpi: 'CPI', mirr: 'MIRR', pv: 'PV', fv: 'FV' };
 /** "molarMass" -> "Molar mass", "pH" -> "pH", "gcContent" -> "GC content". */
 export function labelOf(key) {
     if (/^p[A-Z][A-Za-z]?$/.test(key))
