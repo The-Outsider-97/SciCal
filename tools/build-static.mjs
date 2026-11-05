@@ -2,10 +2,10 @@
 // Uses the project's TypeScript if installed (npm install), otherwise a `tsc` on the PATH.
 // Icons are NOT copied: the server serves them from the SLAI-wide applications/assets folder.
 import { execFileSync } from 'node:child_process';
-import { cpSync, mkdirSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
@@ -19,3 +19,15 @@ else execFileSync(process.platform === 'win32' ? 'tsc.cmd' : 'tsc', args, { stdi
 cpSync(join(root, 'src', 'client', 'index.html'), join(dist, 'index.html'));
 cpSync(join(root, 'src', 'client', 'styles.css'), join(dist, 'styles.css'));
 console.log('Built dist/');
+
+// Standalone distributions include the published loader in dist/startup.
+const shared = process.env.SLAI_ROOT
+  ? join(process.env.SLAI_ROOT, 'applications', 'tools')
+  : join(root, '..', 'tools');
+const publisher = join(shared, 'build', 'publish-startup.mjs');
+if (existsSync(publisher)) {
+  const { publishStartup } = await import(pathToFileURL(publisher).href);
+  publishStartup(dist);
+} else if (!['loader.js', 'loader.css'].every(file => existsSync(join(dist, 'startup', file)))) {
+  throw new Error('Set SLAI_ROOT to build with the shared SLAI startup assets.');
+}
