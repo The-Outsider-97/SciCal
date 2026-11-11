@@ -134,7 +134,9 @@ export function elementDialog(res: R): void {
     h('div', { class: 'kvs' }, facts.filter(([, v]) => v).map(([k, v]) => h('div', { class: 'kv' }, h('div', { class: 'k', text: k }), h('div', { class: 'v', text: v })))),
     str(e.configurationNote) ? h('p', { class: 'muted', text: str(e.configurationNote) }) : null,
     str(e.weightNote) ? h('p', { class: 'muted', text: str(e.weightNote) }) : null,
-    iso.length ? h('div', null, h('div', { class: 'sectitle', text: 'Isotopes' }), simpleTable(iso)) : h('p', { class: 'muted', text: 'No isotope data is stored for this element.' }));
+    iso.length ? h('div', null, h('div', { class: 'sectitle', text: 'Curated isotope masses' }), simpleTable(iso)) :
+      h('p', { class: 'muted', text: 'No independently curated isotope masses are stored for this element. ' +
+        'The atomic visualization uses a separately labeled reference mass number.' }));
   const sceneHost = h('div');
   const isotope = h('select', { 'aria-label': 'Isotope used for schematic nuclear composition' },
     visualizationIsotopes.length ? visualizationIsotopes.map((item) =>
