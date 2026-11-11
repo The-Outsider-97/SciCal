@@ -471,84 +471,142 @@ export function atomScene(z: number, mass: number | null, charge: number, config
     frameLabel: (f) => 'Schematic electron-path phase ' + (f + 1) + '/90',
   };
 }
-function basesPosition(i: number, size: number, strand = 1): V3 {
-  const x = (i - (size - 1) / 2) * (2.1 / Math.max(size - 1, 1));
-  const a = i * .62 + (strand < 0 ? Math.PI : 0);
-  return point(x, .37 * Math.cos(a), .37 * Math.sin(a));
+// B-form DNA is an approximate **geometric reference**, not a nucleotide-resolved atomistic model.
+// Rise 0.34 nm and about 10.5 bp / turn (sequence and environmental conditions vary).
+export const DNA_HELIX = Object.freeze({ riseNm: .34, bpPerTurn: 10.5, radiusNm: 1.0, strandAngularOffset: Math.PI * .80 });
+const rod = (a: V3, b: V3, color: string, r: number, label?: string, id?: string, group?: string): SciencePrimitive =>
+  ({ kind: 'cylinder', a, b, color, r, label, id, group });
+const blend3 = (a: V3, b: V3, t: number): V3 =>
+  [a[0] * (1 - t) + b[0] * t, a[1] * (1 - t) + b[1] * t, a[2] * (1 - t) + b[2] * t];
+const dnaComplement: Record<string, string> = { A: 'T', T: 'A', C: 'G', G: 'C', N: 'N' };
+export function dnaHelixPosition(i: number, size: number, strand: 1 | -1 = 1, bubbleIndex = -1000): V3 {
+  const x = (i - (size - 1) / 2) * DNA_HELIX.riseNm;
+  const theta = (i / DNA_HELIX.bpPerTurn) * 2 * Math.PI +
+    (strand < 0 ? DNA_HELIX.strandAngularOffset : 0);
+  const bubble = 1 + .65 * Math.max(0, 1 - Math.abs(i - bubbleIndex) / 2.4);
+  const rad = DNA_HELIX.radiusNm * bubble;
+  return [x, Math.cos(theta) * rad, Math.sin(theta) * rad];
+}
+/** Generates continuous round-capped sugar–phosphate tubes and color-coded base rods. */
+export function dnaPrimitives(sequence: string, mode = 'full', bubble = -1000): SciencePrimitive[] {
+  const size = sequence.length;
+  const withBackbone = mode !== 'bases';
+  const withBases = mode !== 'backbone';
+  const showHydrogen = mode === 'hydrogen';
+  const parts: SciencePrimitive[] = [];
+  if (withBackbone && size > 1) {
+    const samples = (size - 1) * 8;
+    for (let j = 1; j <= samples; j++) {
+      const i0 = (j - 1) / 8, i1 = j / 8;
+      for (const strand of [1, -1] as const)
+        parts.push(rod(dnaHelixPosition(i0, size, strand, bubble), dnaHelixPosition(i1, size, strand, bubble),
+          strand === 1 ? '#7da79e' : '#a8a1be', .082, undefined, undefined, strand === 1 ? 'coding' : 'template'));
+    }
+  }
+  if (withBases) {
+    for (let i = 0; i < size; i++) {
+      const a = dnaHelixPosition(i, size, 1, bubble);
+      const b = dnaHelixPosition(i, size, -1, bubble);
+      const open = Math.abs(i - bubble) < 2.5;
+      const codon = 'codon-' + (Math.floor(i / 3) + 1);
+      // Deliberately leave a short inter-base gap for schematic noncovalent H bonds.
+      const innerA = blend3(a, b, open ? .28 : .455);
+      const innerB = blend3(b, a, open ? .28 : .455);
+      parts.push(rod(a, innerA, nucleotideColor(sequence[i]), .12,
+        sequence[i] + ' · coding · position ' + (i + 1), 'dna-coding-' + (i + 1), codon));
+      const complement = dnaComplement[sequence[i]] ?? 'N';
+      parts.push(rod(b, innerB, nucleotideColor(complement), .12,
+        complement + ' · template · position ' + (i + 1), 'dna-template-' + (i + 1), codon));
+      if (showHydrogen && !open && complement !== 'N') {
+        const pairs = sequence[i] === 'C' || sequence[i] === 'G' ? 3 : 2;
+        const centre = blend3(innerA, innerB, .5);
+        for (let k = 0; k < pairs; k++) {
+          const dx = (k - (pairs - 1) / 2) * .09;
+          const p: V3 = [innerA[0] + dx, innerA[1], innerA[2]];
+          const q: V3 = [innerB[0] + dx, innerB[1], innerB[2]];
+          void centre;
+          parts.push({ kind: 'line', a: p, b: q, color: '#cbd4df', width: 1, group: codon });
+        }
+      }
+    }
+  }
+  return parts;
 }
 export function dnaScene(sequence: string): SceneSpec {
   const seq = sequence.slice(0, 80);
-  const comp = (b: string): string => ({ A: 'T', T: 'A', C: 'G', G: 'C', N: 'N' } as Record<string, string>)[b] ?? 'N';
-  return { description: 'DNA double helix, coding 5′→3′ left to right; complementary template 3′→5′. Schematic geometry; showing ' + seq.length + ' nt.',
-    extent: 1.8,
-    at: () => {
-      const parts: SciencePrimitive[] = [];
-      for (let i = 0; i < seq.length; i++) {
-        const a = basesPosition(i, seq.length), b = basesPosition(i, seq.length, -1);
-        parts.push(ball(a, nucleotideColor(seq[i]), .078, seq[i] + ' · ' + (i + 1)));
-        parts.push(ball(b, nucleotideColor(comp(seq[i])), .078, comp(seq[i]) + ' · template'));
-        parts.push(line(a, b, '#a3b0b8', 1));
-        if (i) { parts.push(line(basesPosition(i - 1, seq.length), a, '#7ca981', 3), line(basesPosition(i - 1, seq.length, -1), b, '#a49cba', 3)); }
-      }
-      return parts;
-    } };
+  return {
+    description: 'Educational right-handed B-DNA: ~0.34 nm rise and 10.5 bp/turn. Coding 5′→3′ left–right; complementary template 3′→5′. ' +
+      'Continuous sugar–phosphate tubes and separate cylindrical nucleobases. Showing ' + seq.length + ' base pairs.',
+    extent: Math.max(2.45, seq.length * DNA_HELIX.riseNm * .35),
+    modes: [{ id: 'full', label: 'Backbones + bases' }, { id: 'hydrogen', label: '+ schematic hydrogen bonds' },
+      { id: 'backbone', label: 'Backbones only' }, { id: 'bases', label: 'Cylindrical bases only' }],
+    at: (_frame, mode = 'full') => dnaPrimitives(seq, mode),
+  };
+}
+export function rnaBackbonePosition(i: number, size: number): V3 {
+  // Single-strand pedagogical helix, *not* an inferred RNA secondary structure.
+  const x = (i - (size - 1) / 2) * .34;
+  const theta = i * .50;
+  return [x, .72 * Math.cos(theta), .72 * Math.sin(theta)];
+}
+export function rnaPrimitives(sequence: string, mode = 'full'): SciencePrimitive[] {
+  const parts: SciencePrimitive[] = [];
+  const size = sequence.length;
+  if (mode !== 'bases' && size > 1) {
+    for (let j = 1; j <= (size - 1) * 8; j++) {
+      const p = rnaBackbonePosition((j - 1) / 8, size), q = rnaBackbonePosition(j / 8, size);
+      parts.push(rod(p, q, '#ad9cce', .09, undefined, undefined, 'rna-backbone'));
+    }
+  }
+  if (mode !== 'backbone') for (let i = 0; i < size; i++) {
+    const backbone = rnaBackbonePosition(i, size);
+    const radial: V3 = [0, Math.cos(i * .50), Math.sin(i * .50)];
+    const end = add3(backbone, multiply3(radial, .52));
+    parts.push(rod(backbone, end, nucleotideColor(sequence[i]), .115,
+      sequence[i] + ' · RNA · position ' + (i + 1), 'rna-' + (i + 1), 'codon-' + (Math.floor(i / 3) + 1)));
+  }
+  return parts;
 }
 export function rnaScene(sequence: string): SceneSpec {
   const seq = sequence.slice(0, 80);
-  return { description: 'RNA single strand, 5′→3′ left to right; illustrative path, not predicted secondary structure. Showing ' + seq.length + ' nt.',
-    extent: 1.8, at: () => {
-      const parts: SciencePrimitive[] = [];
-      for (let i = 0; i < seq.length; i++) {
-        const p = point((i - (seq.length - 1) / 2) * (2.1 / Math.max(1, seq.length - 1)), .23 * Math.sin(i * .65), .2 * Math.cos(i * .65));
-        parts.push(ball(p, nucleotideColor(seq[i]), .075, seq[i] + ' · ' + (i + 1)));
-        if (i) {
-          const prev = point((i - 1 - (seq.length - 1) / 2) * (2.1 / Math.max(1, seq.length - 1)), .23 * Math.sin((i - 1) * .65), .2 * Math.cos((i - 1) * .65));
-          parts.push(line(prev, p, '#a58d4b', 3));
-        }
-      }
-      return parts;
-    } };
+  return {
+    description: 'RNA single strand with continuous sugar–phosphate tube and cylindrical nucleobases; 5′→3′ left to right. ' +
+      'Illustrative helical path, NOT a predicted RNA fold. Showing ' + seq.length + ' bases.',
+    extent: Math.max(2.20, seq.length * .34 * .35),
+    modes: [{ id: 'full', label: 'Backbone + bases' }, { id: 'backbone', label: 'Backbone only' },
+      { id: 'bases', label: 'Bases only' }],
+    at: (_frame, mode = 'full') => rnaPrimitives(seq, mode),
+  };
 }
 export function transcriptionScene(coding: string, transcript: string): SceneSpec {
   const size = Math.min(80, coding.length);
-  return { description: 'Schematic transcription: polymerase advances along template 3′→5′ while RNA grows 5′→3′. No promoter or processing is simulated.',
-    frames: size + 1, extent: 1.8,
+  const displayCoding = coding.slice(0, size), displayRna = transcript.slice(0, size);
+  return {
+    description: 'Schematic RNA polymerase moves along DNA template 3′→5′ and synthesizes RNA 5′→3′. ' +
+      'DNA strands open locally and reanneal. This does not simulate enzyme kinetics or promoters.',
+    frames: size + 1, extent: Math.max(2.6, size * DNA_HELIX.riseNm * .35),
     frameLabel: (f) => f + '/' + size + ' nucleotides transcribed' + (coding.length > size ? ' (preview capped)' : ''),
     at(step) {
-      // Draw a small, local transcription bubble. The opened region closes behind the
-      // schematic polymerase rather than leaving the entire helix permanently separated.
-      const parts: SciencePrimitive[] = [];
-      const pair: Record<string, string> = { A: 'T', T: 'A', G: 'C', C: 'G', N: 'N' };
-      let lastCoding: V3 | null = null;
-      let lastTemplate: V3 | null = null;
-      for (let i = 0; i < size; i++) {
-        const opened = step < size && Math.abs(i - step) <= 2;
-        const scale = opened ? 1 + .8 * (1 - Math.abs(i - step) / 3) : 1;
-        const c = basesPosition(i, size);
-        const t = basesPosition(i, size, -1);
-        const a: V3 = [c[0], c[1] * scale, c[2] * scale];
-        const b: V3 = [t[0], t[1] * scale, t[2] * scale];
-        parts.push(ball(a, nucleotideColor(coding[i]), .07, coding[i]));
-        parts.push(ball(b, nucleotideColor(pair[coding[i]]), .07, pair[coding[i]]));
-        if (!opened) parts.push(line(a, b, '#a4b4bd', 1));
-        if (lastCoding && lastTemplate) {
-          parts.push(line(lastCoding, a, '#7ca981', 3));
-          parts.push(line(lastTemplate, b, '#a49cba', 3));
-        }
-        lastCoding = a; lastTemplate = b;
-      }
+      const parts = dnaPrimitives(displayCoding, 'full', step < size ? step : -1000);
       for (let i = 0; i < step; i++) {
-        const x = (i - (size - 1) / 2) * (2.1 / Math.max(size - 1, 1));
-        const p = point(x, -.68, -.48);
-        parts.push(ball(p, nucleotideColor(transcript[i]), .075, transcript[i]));
+        const x = (i - (size - 1) / 2) * DNA_HELIX.riseNm;
+        const current: V3 = [x, -1.6, -1.15];
+        const end: V3 = [x, -1.98, -1.15 + .12 * Math.sin(i * .5)];
+        parts.push(rod(current, end, nucleotideColor(displayRna[i]), .09,
+          displayRna[i] + ' · transcript · position ' + (i + 1), 'transcript-' + i, 'mrna'));
         if (i) {
-          const px = (i - 1 - (size - 1) / 2) * (2.1 / Math.max(size - 1, 1));
-          parts.push(line(point(px, -.68, -.48), p, '#c2a261', 3));
+          const prev: V3 = [(i - 1 - (size - 1) / 2) * DNA_HELIX.riseNm, -1.6, -1.15];
+          parts.push(rod(prev, current, '#b1a167', .075, undefined, undefined, 'mrna-backbone'));
         }
       }
-      if (step < size) parts.push(ball(point((step - (size - 1) / 2) * (2.1 / Math.max(size - 1, 1)), 0, -.15), '#667e90', .22, 'Pol'));
+      if (step < size) {
+        const position: V3 = [(step - (size - 1) / 2) * DNA_HELIX.riseNm, -0.3, -.1];
+        parts.push({ kind: 'ball', p: position, r: .32, color: '#8197a7',
+          label: 'Pol', id: 'rna-polymerase', group: 'enzyme' });
+      }
       return parts;
-    } };
+    },
+  };
 }
 export interface TranslationStep { codon: string; aa: string; anticodon?: string }
 export function translationScene(mrna: string, codons: TranslationStep[], start: number): SceneSpec {
