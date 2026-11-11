@@ -240,7 +240,8 @@ export function geneticCode(res: R): HTMLElement {
   tableButton.addEventListener('click', () => { mode = 'table'; paint(); });
   wheelButton.addEventListener('click', () => { mode = 'wheel'; paint(); });
   const filter = (): void => {
-    const q = search.value.trim().toUpperCase().replace(/T/g, 'U');
+    const typed = search.value.trim().toUpperCase();
+    const q = /^[ACGTU]{1,3}$/.test(typed) ? typed.replace(/T/g, 'U') : typed;
     const results = keys.filter((codon) => !q || codon.includes(q) || str(code.get(codon)?.name).toUpperCase().includes(q) ||
       str(code.get(codon)?.aa).toUpperCase() === q || (THREE[str(code.get(codon)?.aa)] ?? '').toUpperCase() === q);
     for (const [codon, cell] of cells) cell.hidden = Boolean(q) && !results.includes(codon);
