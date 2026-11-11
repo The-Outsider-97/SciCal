@@ -11,6 +11,7 @@ const TABS = [
     { id: 'biology', title: 'Biology', icon: 'biology' },
     { id: 'measurement', title: 'Measurement', icon: 'measurement' },
     { id: 'formulas', title: 'Formulas', icon: 'formulas' },
+    { id: 'stem', title: 'STEM Lab', icon: 'stem' },
     { id: 'finance', title: 'Finance', icon: 'finance' },
     { id: 'constants', title: 'Constants', icon: 'constants' },
 ];

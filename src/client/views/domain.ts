@@ -1,9 +1,10 @@
 // The subject workspaces (Chemistry, Biology, Measurement, Formulas). Every operation comes from the server's catalogue, so the
 // forms, the example buttons and the backend cannot drift apart; this file only knows how to lay them out and run them.
 import { collect, describeInput, emptyState, seed, type FormState } from '../../core/forms.js';
-import { crossCheckSummary, headlineOf } from '../../core/results.js';
+import { headlineOf } from '../../core/results.js';
+import { canCheck } from '../../core/stem.js';
 import { nowIso, newEntryId } from '../../core/session.js';
-import type { Entry, FormOp } from '../../core/types.js';
+import type { Entry, FormOp, Verification } from '../../core/types.js';
 import { debounce, isRecord } from '../../core/util.js';
 import { api, ApiError } from '../api.js';
 import { dnaScene, rnaScene, rnaProcessingScene, transcriptionScene, translationScene, mutationScene, moleculeScene, molecularReactionScene, reactionScene, scientificScene, type StoichSpecies, type StructuredReactionSpecies, type MolecularStructure, type TranslationStep, type ScienceScene, type SceneSpec } from '../science3d.js';
@@ -15,6 +16,7 @@ import type { NavRequest, WorkspaceView } from '../shell.js';
 import { store } from '../store.js';
 import { copyText, emptyNote, saveBlob, setBusy, toast } from '../ui.js';
 import { askExplain } from './assistant.js';
+import { runCheck, stemAuto, stemBadge, stemButton, stemEnabled, stemStatus, verificationPanel } from '../stem.js';
 import { savedList } from './saved.js';
 
 type R = Record<string, unknown>;
@@ -122,7 +124,7 @@ export function createDomainView(domainId: string): WorkspaceView {
   let state: FormState = op ? emptyState(op) : {};
   let form: FormHandle | null = null;
   let job: string | null = null;
-  let last: { res: R; params: R; op: FormOp } | null = null;
+  let last: { res: R; params: R; op: FormOp; verification?: Verification } | null = null;
   let periodicCache: R[] | null = null;
   let periodic: ReturnType<typeof periodicTable> | null = null;
   let activeScientificScene: ScienceScene | null = null;
@@ -148,9 +150,10 @@ export function createDomainView(domainId: string): WorkspaceView {
     },
   });
 
-  const entryFor = (l: { res: R; params: R; op: FormOp }): Omit<Entry, 'id' | 'time'> => ({
+  const entryFor = (l: { res: R; params: R; op: FormOp; verification?: Verification }): Omit<Entry, 'id' | 'time'> => ({
     kind: 'domain', workspace: domainId, domain: domainId, op: l.op.id, params: l.params, settings: store.settings as unknown as R,
     title: describeInput(l.op, l.params), result: l.res, summary: { ok: l.res.ok !== false, headline: headlineOf(l.res) }, ok: l.res.ok !== false,
+    ...(l.verification ? { verification: l.verification } : {}),
   });
 
   // ---------------------------------------------------------------------------------------------------------- running
@@ -160,6 +163,8 @@ export function createDomainView(domainId: string): WorkspaceView {
     last = { res, params, op: o };
     const ctx = ctxFor(o, params);
     const nodes: Node[] = [];
+    const stemSlot = h('span', { class: 'stem-slot' });
+    const stemBox = h('div', { class: 'stem-box' });
     const ok = res.ok !== false;
     if (ok && o.view === 'periodic') { await showPeriodic(); return; }
     if (ok) {
@@ -167,11 +172,11 @@ export function createDomainView(domainId: string): WorkspaceView {
         h('div', { class: 'row' },
           NO_SAVE.has(o.id) ? null : h('button', { class: 'btn small', type: 'button', text: 'Add to worksheet', on: { click: () => { if (last) { store.addEntry(entryFor(last)); toast('Added to the worksheet', 'ok', 2200); } } } }),
           NO_SAVE.has(o.id) ? null : h('button', { class: 'btn small', type: 'button', text: 'Explain', on: { click: () => { if (last) void askExplain({ id: newEntryId(), time: nowIso(), ...entryFor(last) } as Entry); } } }),
-          o.id === 'repeated' ? h('button', { class: 'btn small', type: 'button', title: 'Ask the SLAI STEM agent for the same statistics and compare (experimental; needs the agent)', text: 'Cross-check', on: { click: () => void crossCheck(params) } }) : null));
-      nodes.push(head);
+          stemSlot));
+      nodes.push(head, stemBox);
     }
     const skip = new Set<string>();
-    if (ok && o.view === 'punnett') { nodes.push(renderResult(res, ctx, new Set(['gametes1', 'gametes2', 'grid']))); nodes.splice(1, 0, punnettSquare(res)); }
+    if (ok && o.view === 'punnett') { nodes.push(renderResult(res, ctx, new Set(['gametes1', 'gametes2', 'grid']))); nodes.splice(2, 0, punnettSquare(res)); }
     else if (ok && o.view === 'code') {
       nodes.push(geneticCode(res));
       nodes.push(renderResult({ ok: true, enzymes: Object.entries(isRecord(res.enzymes) ? res.enzymes : {}).map(([name, v]) => ({ enzyme: name, ...(isRecord(v) ? v : {}) })) }, ctx, skip));
@@ -182,10 +187,34 @@ export function createDomainView(domainId: string): WorkspaceView {
     const visual = scientificView(domainId, o.id, res);
     if (visual) {
       activeScientificScene = visual;
-      nodes.splice(1, 0, h('div', { class: 'section' },
+      nodes.splice(2, 0, h('div', { class: 'section' },
         h('div', { class: 'sectitle', text: 'Interactive scientific visualization' }), visual.el));
     }
     replace(out, ...nodes);
+    if (ok && domainId !== 'stem') void attachStem(o, res, params, stemSlot, stemBox);
+  };
+
+  /** The STEM check for a workspace result: a button (or, in automatic mode, the check itself) when the agent has a second route for this operation. */
+  const attachStem = async (o: FormOp, res: R, params: R, slot: HTMLElement, box: HTMLElement): Promise<void> => {
+    if (!stemEnabled()) return;
+    const st = await stemStatus();
+    if (!canCheck({ kind: 'domain', domain: domainId, op: o.id, result: res }, st.checkable?.domain) || last?.res !== res) return;
+    const show = (v: Verification): void => {
+      replace(box, v.ran ? verificationPanel(v) : null);
+      const badge = stemBadge(v, () => { if (box.firstChild) replace(box); else replace(box, verificationPanel(v)); });
+      replace(slot, badge, button);
+    };
+    const check = async (): Promise<void> => {
+      replace(slot, h('span', { class: 'badge plain', text: 'STEM checking…' }));
+      const v = await runCheck({ kind: 'domain', workspace: domainId, domain: domainId, op: o.id, params, result: res }, store.settings, []);
+      if (last?.res !== res) return;
+      if (!v.ran) { toast(v.summary, 'info', 9000); replace(slot, button); return; }
+      last.verification = v;
+      show(v);
+    };
+    const button = stemButton('STEM check', () => void check());
+    replace(slot, button);
+    if (st.available && stemAuto()) void check();
   };
 
   const showPeriodic = async (): Promise<void> => {
@@ -200,14 +229,6 @@ export function createDomainView(domainId: string): WorkspaceView {
     periodic.filter(String(state.query ?? ''));
     replace(out, h('div', { class: 'headline' }, h('h3', { text: 'Periodic table' }), h('span', { class: 'muted', text: 'Click an element for its properties and isotopes. The search above dims the elements that do not match.' })), periodic.el,
       h('p', { class: 'muted source', text: 'Atomic weights are conventional values; elements with no stable isotope show their most stable known isotope as stored in the data file.' }));
-  };
-
-  const crossCheck = async (params: R): Promise<void> => {
-    const values = Array.isArray(params.values) ? params.values : [];
-    try {
-      const r = await api.assistCrosscheck(values);
-      toast(crossCheckSummary(r), 'info', 10000);
-    } catch (e) { toast(e instanceof ApiError ? e.message : 'The cross-check could not run.', 'error'); }
   };
 
   const run = async (quiet = false): Promise<void> => {

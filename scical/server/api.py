@@ -78,6 +78,13 @@ def calc(app: SciCalApp, req: Request) -> Response:
 @route("POST", "/api/domain")
 def domain(app: SciCalApp, req: Request) -> Response:
     b = req.json(SMALL)
+    if b.get("domain") == "stem":                                  # the STEM Lab runs in this process (its callbacks cannot go to a worker)
+        from ..core.numerical.context import Settings
+        from ..integrations import stem_lab
+        params = b.get("params") or {}
+        if not isinstance(params, dict):
+            raise BadRequest("'params' must be an object")
+        return raw(stem_lab.run(app.stem, Settings.from_dict(_settings(b)), str(b.get("op")), params, app.evaluate_calc))
     task = {"kind": "domain", "domain": b.get("domain"), "op": b.get("op"), "params": b.get("params") or {}, "settings": _settings(b)}
     return raw(app.compute(task, _job(b)))
 
@@ -303,3 +310,41 @@ def uncertainty_crosscheck(app: SciCalApp, req: Request) -> Response:
     normalized = [{"standard": item["standard"], "sensitivity": item["sensitivity"]} for item in parts]
     value = float(res["combinedUncertainty"]["value"])
     return ok(app.assistant.verify_uncertainty_budget(sid, allowed, normalized, value))
+
+
+# ------------------------------------------------------------------------------------------------------------------ the STEM agent
+def _stem_status(app: SciCalApp) -> dict[str, Any]:
+    from ..integrations.stem_checks import DOMAIN_CHECKS
+    return {**app.stem.status(), "checkable": {"calc": True, "domain": [[d, o] for d, o in sorted(DOMAIN_CHECKS)]}}
+
+
+@route("GET", "/api/stem/status")
+def stem_status(app: SciCalApp, req: Request) -> Response:
+    return ok(_stem_status(app))
+
+
+@route("POST", "/api/stem/probe")
+def stem_probe(app: SciCalApp, req: Request) -> Response:
+    app.stem.reset()
+    return ok(_stem_status(app))
+
+
+@route("POST", "/api/stem/verify")
+def stem_verify(app: SciCalApp, req: Request) -> Response:
+    """Ask the STEM agent to compute one worksheet entry again by another route. Never changes the entry; the answer is a ``verification``."""
+    from ..integrations.stem_bridge import StemUnavailable
+    from ..integrations.stem_checks import CheckEnv, verify_entry
+    from ..services.sessions import clean_entry
+    b = req.json(SMALL)
+    entry = clean_entry(b.get("entry"), 0)
+    context = b.get("context") or []
+    if not isinstance(context, list) or len(context) > 400 or not all(isinstance(x, str) for x in context):
+        raise BadRequest("'context' must be a list of at most 400 input lines")
+    settings = _settings(b)
+    if entry["kind"] == "domain" and not isinstance(entry.get("result"), dict):
+        entry["result"] = app.compute({"kind": "domain", "domain": entry.get("domain"), "op": entry.get("op"), "params": entry.get("params") or {}, "settings": settings}, None)
+    try:
+        env = CheckEnv(app.stem.scoped(25.0), app.evaluate_calc, context, settings)
+        return ok(verify_entry(env, entry))
+    except StemUnavailable as exc:
+        return ok({"ran": False, "verdict": "unavailable", "summary": exc.message, "checks": [], "counts": {}})

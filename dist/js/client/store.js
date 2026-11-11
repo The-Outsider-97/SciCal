@@ -40,7 +40,7 @@ export class Store {
         this.prefs = status.prefs ?? {};
         this.forms = forms.domains;
         const ws = this.prefs.workspace;
-        if (ws === 'math' || ws === 'chemistry' || ws === 'biology' || ws === 'measurement' || ws === 'finance' || ws === 'constants')
+        if (ws === 'math' || ws === 'chemistry' || ws === 'biology' || ws === 'measurement' || ws === 'finance' || ws === 'constants' || ws === 'stem')
             this.workspace = ws;
         await this.openInitialSession();
     }

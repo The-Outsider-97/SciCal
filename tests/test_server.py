@@ -189,7 +189,7 @@ class ServerTests(unittest.TestCase):
 
     def test_forms_catalogue(self):
         status, r, _ = self.call("GET", "/api/forms")
-        self.assertEqual(sorted(r["data"]["domains"]), ["biology", "chemistry", "finance", "formulas", "measurement"])
+        self.assertEqual(sorted(r["data"]["domains"]), ["biology", "chemistry", "finance", "formulas", "measurement", "stem"])
 
     # ------------------------------------------------------------------ worksheets
     def test_worksheet_life_cycle(self):

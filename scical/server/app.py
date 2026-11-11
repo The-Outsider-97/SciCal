@@ -13,6 +13,7 @@ from typing import Any
 from .. import APP_NAME, __version__
 from ..integrations.assist import Assistant
 from ..integrations.slai_link import SlaiLink, activate, find_slai_root
+from ..integrations.stem_bridge import StemBridge
 from ..services.fsutil import atomic_write_text
 from ..services.sessions import SessionStore
 from ..services.workers import Pool
@@ -21,7 +22,9 @@ from .config import Settings
 PREF_SCHEMA: dict[str, tuple[type, Any]] = {
     "theme": (str, ("system", "light", "dark", "contrast")), "angle": (str, ("rad", "deg", "grad")), "digits": (int, (1, 100)),
     "notation": (str, ("auto", "fixed", "sci", "eng")), "result": (str, ("auto", "exact", "approx")), "thousands": (bool, None),
-    "units": (bool, None), "fontScale": (float, (0.8, 1.6)), "reducedMotion": (bool, None), "workspace": (str, ("math", "chemistry", "biology", "measurement", "finance", "constants")),
+    "units": (bool, None), "fontScale": (float, (0.8, 1.6)), "reducedMotion": (bool, None), "workspace": (str, ("math", "chemistry", "biology", "measurement", "finance", "constants", "stem")),
+    # STEM checks (the SLAI STEM agent computes a result again by another route): off, on request, or after every calculation
+    "stemVerify": (str, ("off", "ask", "auto")),
     "lastSession": (str, None), "complex": (bool, None), "keypad": (str, ("basic", "scientific", "functions", "units")),
     # The person's own financial assumptions (Constants > Financial parameters). They are defaults for the Finance forms, not constants, and
     # never come from market data. Rates are in percent.
@@ -89,6 +92,7 @@ class SciCalApp:
         self.started = time.time()
         self.link = SlaiLink(settings.slai_root, settings.data_dir, settings.agents, settings.agent_timeout_s)
         self.assistant = Assistant(settings.agents, self.link)
+        self.stem = StemBridge(self.link, settings.agents)
         self.store = SessionStore(settings.sessions_dir, settings.max_sessions, settings.max_entries, settings.max_session_bytes)
         self.prefs = Prefs(settings.prefs_path)
         self.pool = Pool(settings.workers or None, settings.task_timeout_s).start()
@@ -98,6 +102,10 @@ class SciCalApp:
 
     def compute(self, task: dict[str, Any], job_id: str | None = None, timeout: float | None = None) -> dict[str, Any]:
         return self.pool.submit(task, job_id or uuid.uuid4().hex, timeout)
+
+    def evaluate_calc(self, text: str, context: list[str], settings: dict[str, Any]) -> dict[str, Any]:
+        """One calculator line through the worker pool (used by the STEM checks and the STEM Lab to ask SciCal's own engine a question)."""
+        return self.compute({"kind": "calc", "input": text, "context": context, "settings": settings})
 
     def status(self) -> dict[str, Any]:
         return {"app": APP_NAME, "version": __version__, "uptimeS": round(time.time() - self.started), "platform": sys.platform, "python": sys.version.split()[0],

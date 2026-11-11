@@ -2,7 +2,7 @@
 
 ## The window
 
-Six workspaces along the top – **Mathematics, Graphing, Chemistry, Biology, Measurement, Formulas** – then your worksheet name, search, the SLAI assistant and settings. Arrow keys move between the tabs.
+Workspaces along the top – **Mathematics, Graphing, Chemistry, Biology, Measurement, Formulas, STEM Lab, Finance, Constants** – then your worksheet name, search, the SLAI assistant and settings. Arrow keys move between the tabs.
 Everything you calculate is stored in the current **worksheet** and saved on this computer automatically (the dot beside the worksheet name shows the save state).
 
 ## Mathematics
@@ -53,13 +53,49 @@ DNA/RNA sequence statistics, translation, open reading frames, restriction sites
 
 ## Measurement
 
-Significant figures, error propagation (with the formula and each term's contribution), repeated measurements (mean, standard deviation, 95 % interval, with an experimental cross-check against the SLAI STEM agent when it is installed), percent error, calibration curves with an unknown, unit conversion, dimensional analysis, the unit catalogue and physical constants (each with its source and uncertainty).
+Significant figures, error propagation (with the formula and each term's contribution), repeated measurements (mean, standard deviation, 95 % interval), with a STEM check on the results (see below), percent error, calibration curves with an unknown, unit conversion, dimensional analysis, the unit catalogue and physical constants (each with its source and uncertainty).
 
 ![Calibration](screenshots/measurement-calibration.png)
 
 ## Formulas
 
 A library of scientific formulas with variables, units and dimensions. **Solve for a variable** rearranges exactly and checks dimensions; **Analyse an equation** reports its dimensional consistency.
+
+## STEM Lab
+
+![Differential equations](screenshots/stem-lab-ode.png)
+
+The STEM Lab is where SLAI's STEM agent does the computing. SciCal reads your expressions, hands the agent numbers and functions, and shows what comes back, labelled as the agent's work. The agent runs on this computer, uses no language model, and seeded runs repeat exactly. Pick an operation on the left, fill in the form (or press **Load example**), then **Calculate**.
+
+| Operation | What you get |
+| --- | --- |
+| **Differential equations** | A system such as `x' = v`, `v' = -k*x` solved with Euler, RK4 or adaptive RK45, optionally all three side by side; solution and phase-portrait plots |
+| **Monte-Carlo uncertainty** | A formula with uncertain inputs sampled with a seed, next to the first-order result |
+| **Numerical integration** | Six rules, each one's error measured against SciCal's exact integral |
+| **Root finding** | Bisection, secant and Newton–Raphson, with iterations and residuals |
+| **Linear systems and conditioning** | The solution, the condition number, the residual and the digits lost, next to SciCal's exact solution |
+| **Interpolation** | Line, cubic spline and polynomial through your points, with values between them |
+| **Bootstrap interval** | A confidence interval for the mean, median or standard deviation without assuming a normal distribution (seeded) |
+| **What the agent offers** | Every domain and operation the connected agent provides |
+
+Each run has limits (about 60 000 function evaluations and 25 seconds); an operation that exceeds them stops and says so.
+
+## STEM checks
+
+![A STEM check on an integral](screenshots/stem-check-math.png)
+
+The **shield** button on a calculation (and **STEM check** on a workspace result) asks the STEM agent to compute the same thing again by a different route – for example it integrates `x^2` from 0 to 3 numerically while SciCal integrates it exactly – and compares the two. The result is a badge:
+
+* **agrees** – both values match within the tolerance shown (closed forms 10⁻⁹ relative, numerical derivatives 10⁻⁶, quadrature 10⁻⁷);
+* **differs** – they do not match; the difference is shown. SciCal's value is still the one displayed, and the badge is a reason to look closer;
+* **skipped** – the agent has no way to check this (for example a unit its table does not know, such as `in`); the reason is given;
+* **failed** – the agent could not run the check.
+
+Checks are available for scalar values, statistics and distributions, derivatives and integrals, equation solutions, matrix inverses, eigenvalues and linear systems, unit conversions, and for repeated measurements, calibration, uncertainty budgets, formula uncertainty, formula solving, the ideal gas law and Michaelis–Menten fits. The badge is saved with the worksheet entry and appears in Markdown, text and SLDC exports (only when a check actually ran).
+
+![A STEM check on a measurement](screenshots/stem-check-measurement.png)
+
+In **Settings → SLAI STEM agent**, *STEM checks* can be **On request** (default, a button on each result), **After every calculation**, or **Off**, which hides the buttons. Unlike the explain and language agents, the STEM agent needs no per-worksheet permission, because it never reads your text: it receives numbers and expressions only. `--agents none` turns it off together with the other agents.
 
 ## Worksheets, search and export
 
@@ -100,7 +136,7 @@ The Constants page lists 85 physical constants with their symbol, value, uncerta
 
 ## Settings
 
-Theme (follow the system, light, dark, high contrast), text size, reduce motion, angle unit, significant digits (6–100), notation (automatic, fixed, scientific, engineering) and digit grouping. Units mode and complex mode are switches above the calculation list. All are saved on this computer.
+Theme (follow the system, light, dark, high contrast), text size, reduce motion, angle unit, significant digits (6–100), notation (automatic, fixed, scientific, engineering), digit grouping and STEM checks (off, on request, after every calculation). Units mode and complex mode are switches above the calculation list. All are saved on this computer.
 
 | Light | Dark | High contrast |
 | --- | --- | --- |
@@ -108,7 +144,7 @@ Theme (follow the system, light, dark, high contrast), text size, reduce motion,
 
 ## The SLAI assistant (optional)
 
-The sparkle button shows which SLAI agents SciCal can reach. **Explain** on any result always gives a worked explanation built by SciCal itself; if you allow agents for the worksheet, an agent can add a plain-language version, after SLAI's Privacy agent has seen the text first. Agents never decide a number: every value comes from the deterministic engine. Agents are off per worksheet until you allow them, and off entirely with `--agents none`.
+The sparkle button shows which SLAI agents SciCal can reach. **Explain** on any result always gives a worked explanation built by SciCal itself; if you allow agents for the worksheet, an agent can add a plain-language version, after SLAI's Privacy agent has seen the text first. The panel also shows whether the STEM agent is connected. Agents never decide a number: every value comes from the deterministic engine, and the STEM agent only checks it. Agents are off per worksheet until you allow them, and off entirely with `--agents none`.
 
 ## Phone and narrow windows
 
