@@ -6,6 +6,7 @@ import { h, replace } from './dom.js';
 import { math } from './math-dom.js';
 import { cellText } from './domain-results.js';
 import { dialog } from './ui.js';
+import { atomScene, scientificScene, nucleotideColor, type ScienceScene } from './science3d.js';
 
 type R = Record<string, unknown>;
 const rows = (v: unknown): R[] => (Array.isArray(v) ? v.filter(isRecord) : []);
@@ -74,7 +75,38 @@ export function elementDialog(res: R): void {
     str(e.configurationNote) ? h('p', { class: 'muted', text: str(e.configurationNote) }) : null,
     str(e.weightNote) ? h('p', { class: 'muted', text: str(e.weightNote) }) : null,
     iso.length ? h('div', null, h('div', { class: 'sectitle', text: 'Isotopes' }), simpleTable(iso)) : h('p', { class: 'muted', text: 'No isotope data is stored for this element.' }));
-  dialog(`${str(e.name)} (${str(e.symbol)})`, body, { wide: true });
+  const sceneHost = h('div');
+  const isotope = h('select', { 'aria-label': 'Isotope' },
+    iso.length ? iso.map((item) => h('option', { value: String(item.A), text: String(e.symbol) + '-' + String(item.A) })) : h('option', { value: '', text: 'No validated isotope data in SciCal' }));
+  // A missing mass number must NOT be substituted with a rounded average atomic weight.
+  isotope.disabled = iso.length === 0;
+  const charge = h('input', { type: 'number', min: '-3', max: String(Math.min(3, Number(e.z))), step: '1', value: '0', 'aria-label': 'Net ionic charge' });
+  const dataLine = h('p', { class: 'muted' });
+  body.prepend(h('div', { class: 'section' },
+    h('div', { class: 'sectitle', text: 'Interactive atomic model' }),
+    h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { class: 'label', text: 'Isotope' }), isotope),
+      h('label', { class: 'field' }, h('span', { class: 'label', text: 'Ion charge (e)' }), charge)),
+    dataLine, sceneHost));
+  let current: ScienceScene | null = null;
+  const update = (): void => {
+    current?.destroy();
+    const z = Number(e.z);
+    const mass = iso.length ? Number(isotope.value) : null;
+    const q = Math.trunc(Number(charge.value));
+    if (!Number.isInteger(q) || q < -3 || q > Math.min(3, z)) {
+      replace(sceneHost, h('p', { role: 'alert', text: 'Choose an integer charge between -3 and ' + Math.min(3, z) + '.' }));
+      return;
+    }
+    dataLine.textContent = z + ' protons · ' + (mass === null ? 'neutrons unknown' : (mass - z) + ' neutrons') + ' · ' + (z - q) + ' electrons. ' +
+      'Electron configuration shown in the details is the neutral ground state; ionic shell positions are illustrative.';
+    current = scientificScene(atomScene(z, mass, q, str(e.configuration)));
+    replace(sceneHost, current.el);
+  };
+  isotope.addEventListener('change', update);
+  charge.addEventListener('change', update);
+  const handle = dialog(`${str(e.name)} (${str(e.symbol)})`, body, { wide: true, onClose: () => current?.destroy() });
+  void handle;
+  update();
 }
 
 export function simpleTable(data: R[], hide: string[] = []): HTMLElement {
@@ -98,11 +130,11 @@ export function punnettSquare(res: R): HTMLElement {
 }
 
 // ------------------------------------------------------------------------------------------------------------------ genetic code
-const BASES = ['T', 'C', 'A', 'G'];
+const BASES = ['U', 'C', 'A', 'G'];
 const THREE: Record<string, string> = { A: 'Ala', R: 'Arg', N: 'Asn', D: 'Asp', C: 'Cys', Q: 'Gln', E: 'Glu', G: 'Gly', H: 'His', I: 'Ile', L: 'Leu', K: 'Lys', M: 'Met', F: 'Phe', P: 'Pro', S: 'Ser', T: 'Thr', W: 'Trp', Y: 'Tyr', V: 'Val' };
 export function geneticCode(res: R): HTMLElement {
   const code = new Map<string, R>();
-  for (const c of rows(res.code)) code.set(str(c.codon), c);
+  for (const c of rows(res.code)) code.set(str(c.codon).replace(/T/g, 'U'), c);
   const head = h('tr', null, h('th', { scope: 'col', text: '1st base' }), BASES.map((b) => h('th', { scope: 'col', text: `2nd base: ${b}` })));
   const body = BASES.map((first) => h('tr', null, h('th', { scope: 'row', text: first }), BASES.map((second) => h('td', { class: 'codon' }, BASES.map((third) => {
     const codon = first + second + third;
@@ -110,9 +142,9 @@ export function geneticCode(res: R): HTMLElement {
     const sym = str(c?.aa);
     const stop = sym === '*' || /stop/i.test(str(c?.name));
     return h('div', { class: `cl ${stop ? 'stop' : ''}`, title: str(c?.name) },
-      h('span', { class: 'cd', text: codon }), h('strong', { text: stop ? 'Stop' : sym }), h('span', { class: 'muted', text: stop ? '' : THREE[sym] ?? '' }));
+      h('span', { class: 'cd' }, [...codon].map((base) => h('span', { class: 'base', text: base, style: { color: nucleotideColor(base) } }))), h('strong', { text: stop ? 'Stop' : sym }), h('span', { class: 'muted', text: stop ? '' : THREE[sym] ?? '' }));
   })))));
-  return h('div', { class: 'section' }, h('div', { class: 'sectitle', text: 'Standard genetic code (DNA codons)' }), h('div', { class: 'table-wrap' }, h('table', { class: 'data code' }, h('thead', null, head), h('tbody', null, body))),
+  return h('div', { class: 'section' }, h('div', { class: 'sectitle', text: 'Standard genetic code (mRNA codons, 5′→3′)' }), h('div', { class: 'table-wrap' }, h('table', { class: 'data code' }, h('thead', null, head), h('tbody', null, body))),
     str(res.table) ? h('p', { class: 'muted source', text: str(res.table) }) : null);
 }
 
