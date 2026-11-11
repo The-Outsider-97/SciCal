@@ -864,3 +864,27 @@ export function nucleusScene(z: number, mass: number | null, configuration: stri
     at: () => nucleusParticles(z, mass),
   };
 }
+
+
+/** Valence-quark-only schematic, not a spatial/QCD wavefunction or gluon trajectory. */
+export function valenceQuarkScene(kind: 'proton' | 'neutron'): SceneSpec {
+  const flavors: Array<'u' | 'd'> = kind === 'proton' ? ['u', 'u', 'd'] : ['u', 'd', 'd'];
+  const positions: V3[] = [[-.45, -.25, 0], [.45, -.25, 0], [0, .5, 0]];
+  return {
+    description: (kind === 'proton' ? 'Proton (uud)' : 'Neutron (udd)') +
+      ' valence quarks. Quarks are confined; QCD also contains gluons and sea-quark pairs. ' +
+      'Distances and gluon connections are conceptual, NOT measured classical trajectories.',
+    extent: 1.65,
+    at: () => {
+      const particles: SciencePrimitive[] = [];
+      for (let i = 0; i < positions.length; i++) for (let j = i + 1; j < positions.length; j++)
+        particles.push({ kind: 'line', a: positions[i], b: positions[j],
+          color: '#d7ba59', width: 3, group: 'strong-interaction' });
+      positions.forEach((p, i) => particles.push({
+        kind: 'ball', p, r: .26, color: flavors[i] === 'u' ? '#aa70dd' : '#67b5a4',
+        label: flavors[i], id: 'quark-' + (i + 1), group: 'valence-quarks',
+      }));
+      return particles;
+    },
+  };
+}
