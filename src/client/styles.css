@@ -579,3 +579,17 @@ table.code th { text-align: center; }
 .export-block ul { margin: 0; padding-left: 1.2rem; display: grid; gap: .2rem; }
 .export-banner { margin: 0; padding: .55rem .75rem; border: var(--bw) solid var(--accent); border-radius: var(--radius-sm); background: var(--bg); }
 @media (max-width: 560px) { .export-summary dl { grid-template-columns: 1fr; } .export-row .inline-unit { margin-left: 0; } }
+
+
+/* Scientific visualizations share graph camera math and the current SciCal theme. */
+.science-scene { display: grid; gap: .55rem; min-width: 0; margin: .7rem 0; }
+.science-canvas { position: relative; width: 100%; height: clamp(270px, 42vh, 520px); border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; background: var(--plot-bg); box-shadow: var(--inset-sm); }
+.science-canvas canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.science-canvas canvas:active { cursor: grabbing; }
+.science-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.science-controls input[type="range"] { flex: 1 1 130px; min-width: 110px; }
+.science-controls select { width: auto; max-width: 160px; }
+.science-scene .muted { font-size: .83rem; line-height: 1.45; }
+.science-sequence { display: flex; flex-wrap: wrap; gap: .2rem; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.science-sequence .base { display: inline-flex; align-items: center; justify-content: center; padding: .12rem .28rem; min-width: 1.6rem; border-radius: .25rem; color: #141820; font-weight: 750; border: 1px solid #0002; }
+.science-scene .science-caveat { color: var(--muted); }
