@@ -2,6 +2,7 @@
 import http.client
 import json
 import os
+import signal
 import socket
 import subprocess
 import sys
@@ -21,6 +22,33 @@ def free_port() -> int:
         return s.getsockname()[1]
 
 
+
+# Windows Popen.terminate() calls TerminateProcess, bypassing the SIGBREAK
+# handler that normally shuts down SciCal's calculation-worker processes.
+# A child still holding server.log causes TemporaryDirectory.cleanup() to
+# fail with WinError 32. Isolate the server in its own Windows process group.
+SERVER_PROCESS_FLAGS = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
+
+
+def stop_test_server(proc: subprocess.Popen, timeout: float = 15.0) -> None:
+    """Stop SciCal gracefully so workers release captured log files before fixture cleanup."""
+    if proc.poll() is not None:
+        return
+    try:
+        if os.name == "nt":
+            proc.send_signal(signal.CTRL_BREAK_EVENT)
+        else:
+            proc.terminate()  # SIGTERM is handled by scical.__main__
+    except (OSError, ValueError, ProcessLookupError):
+        if proc.poll() is None:
+            proc.terminate()
+    try:
+        proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout=5)
+
+
 class ServerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -28,7 +56,8 @@ class ServerTests(unittest.TestCase):
         cls.port = free_port()
         cls.log = open(Path(cls.tmp.name) / "server.log", "w")
         cls.proc = subprocess.Popen([sys.executable, "-m", "scical", "--no-browser", "--port", str(cls.port), "--token", TOKEN, "--data-dir", cls.tmp.name + "/data",
-                                     "--output-dir", cls.tmp.name + "/out", "--agents", "none", "--workers", "2", "--timeout", "5"], cwd=ROOT, stdout=cls.log, stderr=subprocess.STDOUT)
+                                     "--output-dir", cls.tmp.name + "/out", "--agents", "none", "--workers", "2", "--timeout", "5"], cwd=ROOT, stdout=cls.log, stderr=subprocess.STDOUT,
+                                     creationflags=SERVER_PROCESS_FLAGS)
         for _ in range(100):
             try:
                 cls.raw("GET", "/")
@@ -42,10 +71,11 @@ class ServerTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        cls.proc.terminate()
-        cls.proc.wait(timeout=10)
-        cls.log.close()
-        cls.tmp.cleanup()
+        try:
+            stop_test_server(cls.proc)
+        finally:
+            cls.log.close()
+            cls.tmp.cleanup()
 
     @classmethod
     def raw(cls, method, path, body=None, headers=None, host=None):
