@@ -28,6 +28,7 @@ export interface SceneSpec {
   modes?: Array<{ id: string; label: string }>;
   at(frame: number, mode?: string): SciencePrimitive[];
   onPick?(selection: SceneSelection): void;
+  selectionDescription?(selection: SceneSelection): string;
   frameLabel?(frame: number): string;
 }
 const BASE: Record<string, string> = {
@@ -58,6 +59,8 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
   let cam: Camera = cloneCamera(DEFAULT_CAMERA);
   let speed = 2;
   let picked = '';
+  let pickedGroup = '';
+  let lastSelection: SceneSelection | null = null;
   let mode = spec.modes?.[0]?.id ?? 'default';
   let focusPoint: V3 = [0, 0, 0];
   let focusAnimation = 0;
@@ -84,6 +87,8 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
   status.className = 'muted';
   status.setAttribute('aria-live', 'polite');
   const reset = button('Reset view', () => resetCamera());
+  const focusButton = button('Focus selection', () => { if (lastSelection) focusOn(lastSelection.position, 2.8); });
+  focusButton.disabled = true;
   const exportBtn = button('PNG', () => {
     canvas.toBlob((blob) => {
       if (!blob) return;
@@ -95,7 +100,7 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
       setTimeout(() => URL.revokeObjectURL(url), 1500);
     }, 'image/png');
   });
-  controls.append(reset, exportBtn);
+  controls.append(reset, focusButton, exportBtn);
   const play = button('Play', () => toggle());
   const back = button('◀', () => setFrame(frame - 1));
   const forward = button('▶', () => setFrame(frame + 1));
@@ -246,7 +251,7 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
             id: shape.id ?? shape.label, label: shape.label, type: shape.kind, position, group: shape.group,
           };
           lastPick.push({ x, y, r: Math.max(8, ctx.lineWidth), depth: item.depth, selection });
-          if (picked === selection.id) {
+          if (picked === selection.id || (pickedGroup && shape.group === pickedGroup)) {
             ctx.lineWidth += 2;
             ctx.strokeStyle = '#ffffff';
             ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
@@ -261,7 +266,7 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
         grad.addColorStop(1, '#263747');
         ctx.fillStyle = grad;
         ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
-        if (picked && picked === (shape.id ?? shape.label)) {
+        if ((picked && picked === (shape.id ?? shape.label)) || (pickedGroup && shape.group === pickedGroup)) {
           ctx.strokeStyle = '#ffffff';
           ctx.lineWidth = 2;
           ctx.stroke();
@@ -299,7 +304,12 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
       const choice = lastPick.filter((p) => Math.hypot(p.x - x, p.y - y) <= p.r).sort((a, b) => a.depth - b.depth)[0];
       if (choice) {
         picked = choice.selection.id;
-        info.textContent = spec.description + ' · selected: ' + choice.selection.label;
+        pickedGroup = choice.selection.group ?? '';
+        lastSelection = choice.selection;
+        focusButton.disabled = false;
+        info.textContent = (spec.selectionDescription?.(choice.selection) ??
+          ('Selected ' + choice.selection.label + (pickedGroup ? ' · group: ' + pickedGroup : ''))) +
+          ' · ' + spec.description;
         spec.onPick?.(choice.selection);
         draw();
       }
