@@ -225,7 +225,11 @@ export function electronShells(config: string, electrons: number): number[] {
   // Ionic orbital reconfiguration is not inferred: remove/add schematic outer electrons only.
   let delta = electrons - actual;
   for (let i = 6; i >= 0 && delta < 0; i--) { const drop = Math.min(shell[i], -delta); shell[i] -= drop; delta += drop; }
-  if (delta > 0) shell[Math.max(0, shell.findLastIndex((x) => x > 0))] += delta;
+  if (delta > 0) {
+    let outer = 0;
+    for (let i = 0; i < shell.length; i++) if (shell[i] > 0) outer = i;
+    shell[outer] += delta;
+  }
   return shell;
 }
 export function atomScene(z: number, mass: number | null, charge: number, configuration: string): SceneSpec {
