@@ -35,7 +35,7 @@ def sequence_analysis(params: dict, s: Settings) -> dict:
     out = C.Out(s)
     gc, n = S.gc_fraction(seq)
     comp = S.composition(seq)
-    data: dict[str, Any] = {"kind": kind.upper(), "length": len(seq), "composition": [{"base": b, "count": c, "percent": out.num(F(100 * c / len(seq)), "%")} for b, c in comp.items()]}
+    data: dict[str, Any] = {"kind": kind.upper(), "length": len(seq), "sceneSequence": seq[:80], "sceneTruncated": len(seq) > 80, "composition": [{"base": b, "count": c, "percent": out.num(F(100 * c / len(seq)), "%")} for b, c in comp.items()]}
     if n:
         data["gcContent"] = out.num(F(100 * gc / n), "%")
         out.step("GC content", f"(G + C) / length = {gc} / {n}")
@@ -80,7 +80,7 @@ def translate_op(params: dict, s: Settings) -> dict:
     if "N" in seq:
         out.warn("Codons that contain N are shown as X.")
     out.step("Genetic code", "Standard code (NCBI table 1); * marks a stop codon")
-    return out.done(protein=_preview(prot, 400), proteinFull=prot if len(prot) <= 5000 else None, length=len(prot), codons=rows[:300],
+    return out.done(protein=_preview(prot, 400), proteinFull=prot if len(prot) <= 5000 else None, length=len(prot), sceneRna=work.replace("T", "U")[:80], codons=rows[:300],
                     startsWithMet=prot.startswith("M"), stopCodons=prot.count("*"))
 
 
