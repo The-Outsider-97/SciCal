@@ -2,7 +2,7 @@
 // the genetic code, the unit catalogue, the constants and the formula library.
 import { isNum, labelOf } from '../core/results.js';
 import { isRecord } from '../core/util.js';
-import { h, replace } from './dom.js';
+import { h, replace, s } from './dom.js';
 import { math } from './math-dom.js';
 import { cellText } from './domain-results.js';
 import { dialog } from './ui.js';
@@ -133,19 +133,129 @@ export function punnettSquare(res: R): HTMLElement {
 const BASES = ['U', 'C', 'A', 'G'];
 const THREE: Record<string, string> = { A: 'Ala', R: 'Arg', N: 'Asn', D: 'Asp', C: 'Cys', Q: 'Gln', E: 'Glu', G: 'Gly', H: 'His', I: 'Ile', L: 'Leu', K: 'Lys', M: 'Met', F: 'Phe', P: 'Pro', S: 'Ser', T: 'Thr', W: 'Trp', Y: 'Tyr', V: 'Val' };
 export function geneticCode(res: R): HTMLElement {
+  // The authoritative mapping stays in SciCal's NCBI table 1 dataset.
   const code = new Map<string, R>();
-  for (const c of rows(res.code)) code.set(str(c.codon).replace(/T/g, 'U'), c);
-  const head = h('tr', null, h('th', { scope: 'col', text: '1st base' }), BASES.map((b) => h('th', { scope: 'col', text: `2nd base: ${b}` })));
+  for (const entry of rows(res.code)) code.set(str(entry.codon).replace(/T/g, 'U'), entry);
+  const keys = BASES.flatMap((first) => BASES.flatMap((second) => BASES.map((third) => first + second + third)));
+  const selectedInfo = h('p', { class: 'note-line', 'aria-live': 'polite' });
+  const search = h('input', { type: 'search', placeholder: 'Search codon or amino acid (e.g. AUG, Met, leucine, Stop)', 'aria-label': 'Search the genetic code' });
+  const matches = h('div', { class: 'science-controls', 'aria-live': 'polite' });
+  const views = h('div');
+  const tableButton = h('button', { class: 'btn small', type: 'button', text: 'Table' });
+  const wheelButton = h('button', { class: 'btn small', type: 'button', text: 'Circular code' });
+  const head = h('tr', null, h('th', { scope: 'col', text: '1st base' }), BASES.map((b) => h('th', { scope: 'col', text: '2nd base: ' + b })));
+  let active = 'AUG';
+  let mode: 'table' | 'wheel' = 'table';
+  const cells = new Map<string, HTMLElement>();
+  const label = (codon: string): string => {
+    const entry = code.get(codon);
+    const symbol = str(entry?.aa);
+    return codon + ' → ' + (symbol === '*' ? 'Stop' : str(entry?.name) + ' (' + (THREE[symbol] ?? symbol) + ')');
+  };
+  const update = (codon: string): void => {
+    if (!code.has(codon)) return;
+    active = codon;
+    selectedInfo.textContent = label(codon) + (codon === 'AUG' ? ' · canonical initiation codon (context dependent)' : '') +
+      ' · Complementary anticodon aligned 3′→5′: ' + (codon.replace(/[AUCG]/g, (base) => ({ A: 'U', U: 'A', C: 'G', G: 'C' } as Record<string, string>)[base])) +
+      (str(code.get(codon)?.aa) === '*' ? ' (stop is recognized by a release factor, not tRNA)' : '');
+    for (const [key, el] of cells) {
+      el.setAttribute('aria-pressed', String(key === codon));
+      el.classList.toggle('selected', key === codon);
+    }
+    const svg = views.querySelector<SVGSVGElement>('svg');
+    if (svg) for (const sector of Array.from(svg.querySelectorAll<SVGPathElement>('path[data-codon]'))) {
+      const on = sector.dataset.codon === codon;
+      sector.setAttribute('stroke-width', on ? '4' : '.75');
+      sector.setAttribute('stroke', on ? '#111' : '#eee');
+    }
+  };
   const body = BASES.map((first) => h('tr', null, h('th', { scope: 'row', text: first }), BASES.map((second) => h('td', { class: 'codon' }, BASES.map((third) => {
     const codon = first + second + third;
-    const c = code.get(codon);
-    const sym = str(c?.aa);
-    const stop = sym === '*' || /stop/i.test(str(c?.name));
-    return h('div', { class: `cl ${stop ? 'stop' : ''}`, title: str(c?.name) },
-      h('span', { class: 'cd' }, [...codon].map((base) => h('span', { class: 'base', text: base, style: { color: nucleotideColor(base) } }))), h('strong', { text: stop ? 'Stop' : sym }), h('span', { class: 'muted', text: stop ? '' : THREE[sym] ?? '' }));
+    const entry = code.get(codon);
+    const sym = str(entry?.aa);
+    const stop = sym === '*';
+    const cell = h('button', { type: 'button', class: 'cl science-codon-choice' + (stop ? ' stop' : ''), title: label(codon), 'aria-label': label(codon),
+      on: { click: () => update(codon) } },
+      h('span', { class: 'cd' }, [...codon].map((base) => h('span', { class: 'base', text: base, style: { color: nucleotideColor(base) } }))),
+      h('strong', { text: stop ? 'Stop' : sym }), h('span', { class: 'muted', text: stop ? '' : THREE[sym] ?? '' }));
+    cells.set(codon, cell);
+    return cell;
   })))));
-  return h('div', { class: 'section' }, h('div', { class: 'sectitle', text: 'Standard genetic code (mRNA codons, 5′→3′)' }), h('div', { class: 'table-wrap' }, h('table', { class: 'data code' }, h('thead', null, head), h('tbody', null, body))),
-    str(res.table) ? h('p', { class: 'muted source', text: str(res.table) }) : null);
+  const table = h('div', { class: 'table-wrap' }, h('table', { class: 'data code' }, h('thead', null, head), h('tbody', null, body)));
+  const polar = (r: number, degrees: number): [number, number] => {
+    const rad = (degrees - 90) * Math.PI / 180;
+    return [260 + r * Math.cos(rad), 260 + r * Math.sin(rad)];
+  };
+  const wedge = (inner: number, outer: number, startAngle: number, endAngle: number): string => {
+    const a = polar(outer, startAngle), b = polar(outer, endAngle), c = polar(inner, endAngle), d = polar(inner, startAngle);
+    const large = endAngle - startAngle > 180 ? 1 : 0;
+    return `M${a[0]} ${a[1]} A ${outer} ${outer} 0 ${large} 1 ${b[0]} ${b[1]} L${c[0]} ${c[1]} A ${inner} ${inner} 0 ${large} 0 ${d[0]} ${d[1]} Z`;
+  };
+  const wheel = s('svg', { viewBox: '0 0 520 520', class: 'science-wheel', role: 'group', 'aria-label': 'Circular genetic code from the centre outward: first, second and third RNA bases' });
+  for (let depth = 0; depth < 3; depth++) {
+    const groups = Math.pow(4, depth + 1);
+    const step = 360 / groups;
+    const inner = [46, 109, 174][depth], outer = [104, 168, 237][depth];
+    for (let i = 0; i < groups; i++) {
+      const base = BASES[i % 4];
+      const start = i * step, end = (i + 1) * step;
+      const attrs: Record<string, string> = {
+        d: wedge(inner, outer, start, end),
+        fill: nucleotideColor(base),
+        stroke: '#eee', 'stroke-width': '.75',
+        opacity: depth === 2 ? '.86' : '.75',
+      };
+      if (depth === 2) {
+        const codon = keys[i];
+        attrs['data-codon'] = codon;
+        attrs.role = 'button';
+        attrs.tabindex = '0';
+        attrs['aria-label'] = label(codon);
+      }
+      const sector = s('path', attrs);
+      if (depth === 2) {
+        const codon = keys[i];
+        sector.addEventListener('click', () => update(codon));
+        sector.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); update(codon); } });
+        sector.append(s('title', null, label(codon)));
+      }
+      wheel.append(sector);
+      if (depth < 2) {
+        const mid = polar((inner + outer) / 2, (start + end) / 2);
+        wheel.append(s('text', { x: String(mid[0]), y: String(mid[1]), 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: '#101820',
+          'font-size': depth === 0 ? '24' : '12', 'font-weight': '700' }, base));
+      }
+    }
+  }
+  wheel.append(s('text', { x: '260', y: '258', 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': '17', fill: 'currentColor' }, '5′'));
+  wheel.append(s('text', { x: '260', y: '280', 'text-anchor': 'middle', 'font-size': '12', fill: 'currentColor' }, '1 → 2 → 3'));
+  const wheelWrap = h('div', null, wheel,
+    h('p', { class: 'muted', text: 'Read center → outer edge: first, second and third mRNA nucleotide (5′→3′). Select an outer wedge for the resulting amino acid. Color and labels identify the bases.' }));
+  const paint = (): void => {
+    replace(views, mode === 'table' ? table : wheelWrap);
+    tableButton.setAttribute('aria-pressed', String(mode === 'table'));
+    wheelButton.setAttribute('aria-pressed', String(mode === 'wheel'));
+    update(active);
+  };
+  tableButton.addEventListener('click', () => { mode = 'table'; paint(); });
+  wheelButton.addEventListener('click', () => { mode = 'wheel'; paint(); });
+  const filter = (): void => {
+    const q = search.value.trim().toUpperCase().replace(/T/g, 'U');
+    const results = keys.filter((codon) => !q || codon.includes(q) || str(code.get(codon)?.name).toUpperCase().includes(q) ||
+      str(code.get(codon)?.aa).toUpperCase() === q || (THREE[str(code.get(codon)?.aa)] ?? '').toUpperCase() === q);
+    for (const [codon, cell] of cells) cell.hidden = Boolean(q) && !results.includes(codon);
+    replace(matches, h('span', { class: 'muted', text: results.length + ' of 64 codons' }),
+      results.length <= 24 ? results.map((codon) => h('button', { type: 'button', class: 'btn small', text: codon, title: label(codon), on: { click: () => update(codon) } })) : null);
+    if (q.length === 3 && code.has(q)) update(q);
+  };
+  search.addEventListener('input', filter);
+  paint();
+  filter();
+  return h('div', { class: 'section science-code-explorer' },
+    h('div', { class: 'sectitle', text: 'Interactive standard genetic code · RNA 5′→3′' }),
+    h('div', { class: 'science-controls' }, search, tableButton, wheelButton),
+    matches, selectedInfo, views,
+    h('p', { class: 'muted source', text: str(res.table) + '. 64 codons; 61 sense codons and three stops. Alternative initiation sites depend on organism and context.' }));
 }
 
 // ------------------------------------------------------------------------------------------------------------------ units and constants
