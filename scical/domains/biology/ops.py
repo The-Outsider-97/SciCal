@@ -564,7 +564,7 @@ def rna_processing_op(params: dict, s: Settings) -> dict:
     spec = C.text(params, "exons", maxlen=500)
     ranges: list[tuple[int, int]] = []
     for token in spec.split(","):
-        match = re.fullmatch(r"\\s*(\\d+)\\s*-\\s*(\\d+)\\s*", token)
+        match = re.fullmatch(r"\s*(\d+)\s*-\s*(\d+)\s*", token)
         if not match:
             raise C.field_error("exons", "Specify 1-based inclusive exon intervals such as 1-6,10-15")
         a, b = map(int, match.groups())
