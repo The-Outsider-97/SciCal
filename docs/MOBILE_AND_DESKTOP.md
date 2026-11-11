@@ -54,6 +54,10 @@ under "If something does not build" at the end.
 
 ## 1. Windows
 
+**The short way:** double-click `build-windows.cmd` in the SciCal folder. It does everything below and opens the folder with the installer (`SLAI SciCal_..._x64-setup.exe`). Run that file to install SciCal like any other program.
+
+The individual steps, if you want them:
+
 You need: Windows 10/11, **Rust** (rustup, with the MSVC toolchain), **Visual Studio Build Tools** with "Desktop development with C++",
 **Node.js 20+**, and **Python 3.13** (3.10+ works) on the PATH. WebView2 is part of Windows 11; the installer fetches it on Windows 10.
 
