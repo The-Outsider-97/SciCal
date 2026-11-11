@@ -16,6 +16,8 @@ const near = (a: number, b: number, delta = 1e-7) => assert.ok(Math.abs(a - b) <
 
 test('central nucleotide mapping has 5 distinct colors', () => {
   assert.equal(new Set(['A', 'U', 'C', 'G', 'T'].map(nucleotideColor)).size, 5);
+  assert.equal(new Set(['A', 'U', 'C', 'G', 'T'].map((base) => nucleotideColor(base, 'accessible'))).size, 5);
+  assert.notEqual(nucleotideColor('C', 'default'), nucleotideColor('C', 'accessible'));
 });
 
 test('electron shell occupation respects noble-gas core, with identified ionic limitation', () => {
@@ -126,6 +128,9 @@ test('translation step recognizes stop without inserting stop as an amino acid',
   ], 0);
   assert.equal(scene.frames, 4);
   assert.match(scene.frameLabel?.(3) ?? '', /Stop/);
+  assert.equal(rods(scene.at(1)).filter((p) => p.kind === 'cylinder' && p.id?.startsWith('mrna-')).length, 9);
+  assert.equal(rods(scene.at(1)).filter((p) => p.kind === 'cylinder' && p.id?.startsWith('anticodon-')).length, 3);
+  assert.equal(rods(scene.at(3)).filter((p) => p.kind === 'cylinder' && p.id?.startsWith('anticodon-')).length, 0);
   const final = scene.at(3).filter((s) => s.kind === 'ball' && s.color === '#38a9a4');
   assert.equal(final.length, 2);
 });
