@@ -432,6 +432,76 @@ def genetic_code(params: dict, s: Settings) -> dict:
     return {"ok": True, "code": rows, "table": "Standard genetic code (NCBI translation table 1)", "enzymes": {k: {"site": v[0], "cut": v[1]} for k, v in S.RESTRICTION.items()}}
 
 
+
+# ------------------------------------------------------------------------------------------------------------------ sequence-driven teaching simulations
+def transcription_op(params: dict, s: Settings) -> dict:
+    """Transcribe an explicitly oriented DNA strand; orientation is never silently reversed."""
+    dna, _ = S.clean(C.text(params, "sequence"), "dna")
+    if len(dna) > 900:
+        raise C.field_error("sequence", "The interactive transcription limit is 900 bases")
+    strand = C.get(params, "strand", "coding")
+    if strand not in ("coding", "template"):
+        raise C.field_error("strand", "Choose coding or template")
+    # The coding sequence is 5'→3'; its complementary template is aligned 3'→5'.
+    # Input named template must be supplied 3'→5' in the direction of polymerase travel.
+    coding = dna if strand == "coding" else S.complement(dna, "dna")
+    template = S.complement(coding, "dna")
+    mrna = coding.replace("T", "U")
+    out = C.Out(s)
+    if "N" in dna:
+        out.warn("Unknown N bases remain N; their identities cannot be inferred.")
+    out.step("Orientation", "Coding: 5′→3′; template: 3′→5′; mRNA is synthesized 5′→3′")
+    out.step("Base pairing", "DNA template A→U, T→A, C→G, G→C")
+    out.warn("Sequence-level educational model: promoter binding, kinetics and termination signals are not predicted.")
+    return out.done(coding=coding, template=template, mrna=mrna, transcriptLength=len(mrna),
+                    inputStrand=strand, orientation={"coding": "5to3", "template": "3to5", "mrna": "5to3"},
+                    model="sequence-level, schematic")
+
+
+def protein_synthesis_op(params: dict, s: Settings) -> dict:
+    """Translation from AUG until the first in-frame stop, with an explicit incomplete result otherwise."""
+    seq, kind = _seq(params)
+    if len(seq) > 900:
+        raise C.field_error("sequence", "The interactive translation limit is 900 bases")
+    mrna = seq.replace("T", "U")
+    start_one = int(C.number(params, "start", default=0, integer=True, lo=0, hi=900))
+    if start_one:
+        start = start_one - 1
+        if mrna[start:start + 3] != "AUG":
+            raise C.field_error("start", "The selected start position must point to AUG")
+    else:
+        start = mrna.find("AUG")
+        if start < 0:
+            raise BiologyError("No AUG initiation codon found",
+                               hint="Supply a sequence containing AUG, or use Translate to examine arbitrary reading frames.")
+    out = C.Out(s)
+    translated: list[dict[str, Any]] = []
+    protein: list[str] = []
+    has_stop = False
+    for pos in range(start, len(mrna) - 2, 3):
+        codon = mrna[pos:pos + 3]
+        aa = S.CODON_TABLE.get(codon.replace("U", "T"), "X")
+        # Anticodons are reported aligned 3′→5′ opposite the 5′→3′ mRNA.
+        anticodon = None if aa == "*" else S.complement(codon, "rna")
+        translated.append({"index": len(translated) + 1, "position": pos + 1,
+                           "codon": codon, "anticodon": anticodon,
+                           "aa": aa, "aminoAcid": S.AA_NAMES.get(aa, "Stop" if aa == "*" else "Unknown")})
+        if aa == "*":
+            has_stop = True
+            break
+        protein.append(aa)
+    if not has_stop:
+        out.warn("No in-frame stop codon occurs after AUG; the displayed peptide is incomplete.")
+    if "X" in protein:
+        out.warn("At least one codon contains an unknown base (N); its amino acid is undetermined.")
+    if (len(mrna) - start) % 3:
+        out.warn("Trailing nucleotides not forming a full codon were not translated.")
+    out.step("Initiation", f"AUG at 1-based position {start + 1} (standard genetic code)")
+    out.step("Termination", "Stop codons use release factors, not tRNA" if has_stop else "Not reached")
+    return out.done(mrna=mrna, start=start + 1, frame=start % 3 + 1, codons=translated,
+                    protein="".join(protein), length=len(protein), complete=has_stop,
+                    geneticCode="NCBI 1 (standard)", model="sequence-level, schematic")
+
 OPS = {"sequence": sequence_analysis, "translate": translate_op, "orfs": orf_op, "restriction": restriction_op, "protein": protein_op,
        "hardy_weinberg": hardy_weinberg, "punnett": punnett, "growth": growth, "michaelis_menten": michaelis_menten, "lab_dilution": lab_dilution,
-       "genetic_code": genetic_code}
+       "genetic_code": genetic_code, "transcription": transcription_op, "protein_synthesis": protein_synthesis_op}
