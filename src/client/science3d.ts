@@ -803,6 +803,8 @@ export function moleculeScene(molecule: MolecularStructure): SceneSpec {
       'Space-filling van der Waals volumes may overlap by design. Source: ' + molecule.source,
     extent: Math.max(2.4, bound + .35), modes: moleculeModes,
     at: (_frame, mode = 'ball-stick') => moleculePrimitives(molecule, [0, 0, 0], mode as MoleculeDisplay, molecule.formula + '-1'),
+    selectionDescription: (selection) => molecule.name + ' (' + molecule.formula + ') · atom: ' + selection.label +
+      ' · ' + molecule.atoms.length + ' atoms · ' + molecule.bonds.length + ' bonds · source: ' + molecule.source,
   };
 }
 export interface StructuredReactionSpecies extends StoichSpecies { structure: MolecularStructure | null }
@@ -815,6 +817,14 @@ export function molecularReactionScene(reactants: StructuredReactionSpecies[], p
       'Before/after views are NOT reaction trajectories, intermediates or mechanisms. Select an atom for molecule identity.',
     frames: 2, extent, modes: moleculeModes,
     frameLabel: (f) => (f ? 'Products: ' : 'Reactants: ') + layouts[f].length + ' distinct molecules',
+    selectionDescription: (selection) => {
+      const placement = layouts.flat().find((p) =>
+        selection.group === 'reactant-' + p.id || selection.group === 'product-' + p.id);
+      if (!placement) return 'Selected ' + selection.label;
+      return placement.molecule.name + ' (' + placement.species + '), instance ' + placement.index +
+        ' · atom: ' + selection.label + ' · ' + placement.molecule.atoms.length + ' atoms · ' +
+        placement.molecule.bonds.length + ' bonds · NIST source: ' + placement.molecule.source;
+    },
     at(frame, mode = 'ball-stick') {
       return layouts[frame].flatMap((place) => moleculePrimitives(place.molecule, place.origin, mode as MoleculeDisplay,
         (frame ? 'product-' : 'reactant-') + place.id));
