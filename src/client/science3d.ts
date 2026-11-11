@@ -451,23 +451,33 @@ export function nucleusParticles(z: number, mass: number | null): SciencePrimiti
   });
 }
 export interface ElectronOrbit { shell: number; index: number; radius: number; phase: number; u: V3; v: V3; id: string }
+/**
+ * Concentric, coplanar educational tracks: each electron has a unique radius,
+ * with a gap greater than twice its display sphere radius. Consequently no two
+ * paths intersect in 3D (nor under ordinary non-edge-on orthographic views).
+ *
+ * This deliberate diagram convention avoids falsely displaying intersecting
+ * classical ellipses. It is not a quantum-mechanical orbit, orbital energy,
+ * radial probability distribution or a measured shell radius.
+ */
+export const ELECTRON_TRACK_GAP = Math.max(.13, 2 * EDUCATIONAL_ELECTRON_RADIUS + .045);
+export const ELECTRON_SHELL_GAP = .28;
 export function electronOrbits(shells: number[], nuclearEnvelope: number): ElectronOrbit[] {
   const result: ElectronOrbit[] = [];
   const base = Math.max(.70, nuclearEnvelope + .42);
+  const u: V3 = [1, 0, 0];
+  const v: V3 = [0, 1, 0];
   let serial = 0;
-  const total = shells.reduce((sum, n) => sum + n, 0);
   shells.forEach((count, shell) => {
     for (let i = 0; i < count; i++) {
-      const azimuth = (serial + 1) * 2.399963229728653;
-      const inclination = Math.acos(1 - 2 * (serial + .5) / Math.max(1, total));
-      const normal: V3 = [Math.sin(inclination) * Math.cos(azimuth),
-        Math.sin(inclination) * Math.sin(azimuth), Math.cos(inclination)];
-      const reference: V3 = Math.abs(normal[2]) > .95 ? [0, 1, 0] : [0, 0, 1];
-      const u = unit3(cross3(normal, reference));
-      const v = unit3(cross3(normal, u));
-      result.push({ shell: shell + 1, index: i, radius: base + shell * .46 + i * .012,
-        phase: (i / Math.max(1, count)) * 2 * Math.PI + serial * .19, u, v,
-        id: 'electron-' + (serial + 1) });
+      // Different radii guarantee all circular paths are disjoint even if
+      // the electrons have different phases or progress at different speeds.
+      const radius = base + serial * ELECTRON_TRACK_GAP + shell * ELECTRON_SHELL_GAP;
+      result.push({
+        shell: shell + 1, index: i, radius,
+        phase: 2 * Math.PI * (i / Math.max(1, count)),
+        u, v, id: 'electron-' + (serial + 1),
+      });
       serial++;
     }
   });
@@ -494,13 +504,13 @@ export function atomScene(z: number, mass: number | null, charge: number, config
     }
   }
   return {
-    description: 'Educational individualized electron paths, NOT quantum-mechanical trajectories. ' + countNote +
-      '. ' + eCount + ' electrons; ionic shell assignment is illustrative.',
+    description: 'Educational nested, nonintersecting electron paths, NOT physical/quantum-mechanical trajectories. ' + countNote +
+      '. ' + eCount + ' electrons; shell populations are based on the electron configuration and ionic placements remain illustrative.',
     frames: 90, extent: Math.max(2.35, maxOrbit + .4),
     at(frame) {
       const parts: SciencePrimitive[] = [...paths, ...core];
       for (const o of orbits) {
-        const angle = o.phase + frame / 90 * 2 * Math.PI * (.5 + o.shell * .08);
+        const angle = o.phase + frame / 90 * 2 * Math.PI;
         const p = add3(multiply3(o.u, Math.cos(angle) * o.radius), multiply3(o.v, Math.sin(angle) * o.radius));
         parts.push({ kind: 'ball', p, color: '#287cce', r: EDUCATIONAL_ELECTRON_RADIUS,
           label: 'e−', id: o.id, group: 'shell-' + o.shell });
