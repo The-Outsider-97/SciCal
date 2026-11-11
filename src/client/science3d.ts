@@ -388,3 +388,15 @@ export function reactionScene(reactants: StoichSpecies[], products: StoichSpecie
       return parts;
     } };
 }
+
+
+export function mutationScene(original: string, mutated: string, kind: 'DNA' | 'RNA'): SceneSpec {
+  const len = Math.max(original.length, mutated.length);
+  const source = (seq: string): SceneSpec => kind === 'RNA' ? rnaScene(seq) : dnaScene(seq);
+  return {
+    description: 'Before/after ' + kind + ' nucleotide sequence comparison. Helix geometry is schematic; a mutation does not establish a phenotype.',
+    frames: 2, extent: 1.8,
+    frameLabel: (f) => f === 0 ? 'Original (' + original.length + ' bases)' : 'Mutated (' + mutated.length + ' bases)',
+    at: (f) => source(f === 0 ? original : mutated).at(0).map((shape) => shape),
+  };
+}
