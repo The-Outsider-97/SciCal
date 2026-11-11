@@ -66,7 +66,7 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
   let focusAnimation = 0;
   const reducedMotion = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   let pointer: { x: number; y: number; startX: number; startY: number; moved: boolean; id: number } | null = null;
-  let lastPick: Array<{ x: number; y: number; r: number; depth: number; selection: SceneSelection }> = [];
+  let lastPick: Array<{ x: number; y: number; r: number; depth: number; selection: SceneSelection; ends?: [number, number, number, number] }> = [];
   let cacheFrame = -1;
   let cacheMode = '';
   let cacheParts: SciencePrimitive[] = [];
@@ -250,7 +250,8 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
           const selection: SceneSelection = {
             id: shape.id ?? shape.label, label: shape.label, type: shape.kind, position, group: shape.group,
           };
-          lastPick.push({ x, y, r: Math.max(8, ctx.lineWidth), depth: item.depth, selection });
+          lastPick.push({ x, y, r: Math.max(7, ctx.lineWidth * .65), depth: item.depth, selection,
+            ends: [a.x, a.y, b.x, b.y] });
           if (picked === selection.id || (pickedGroup && shape.group === pickedGroup)) {
             ctx.lineWidth += 2;
             ctx.strokeStyle = '#ffffff';
@@ -301,7 +302,14 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
     if (pointer && !pointer.moved && Math.hypot(pointer.startX - e.clientX, pointer.startY - e.clientY) < 4) {
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left, y = e.clientY - rect.top;
-      const choice = lastPick.filter((p) => Math.hypot(p.x - x, p.y - y) <= p.r).sort((a, b) => a.depth - b.depth)[0];
+      const hitDistance = (p: (typeof lastPick)[number]): number => {
+        if (!p.ends) return Math.hypot(p.x - x, p.y - y);
+        const [ax, ay, bx, by] = p.ends;
+        const dx = bx - ax, dy = by - ay;
+        const t = clamp(((x - ax) * dx + (y - ay) * dy) / Math.max(1e-12, dx * dx + dy * dy), 0, 1);
+        return Math.hypot(x - (ax + t * dx), y - (ay + t * dy));
+      };
+      const choice = lastPick.filter((p) => hitDistance(p) <= p.r).sort((a, b) => a.depth - b.depth)[0];
       if (choice) {
         picked = choice.selection.id;
         pickedGroup = choice.selection.group ?? '';
