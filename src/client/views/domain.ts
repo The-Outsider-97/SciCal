@@ -88,7 +88,7 @@ function scientificView(domain: string, operation: string, result: R): ScienceSc
       Object.values(sp.atoms).every((n) => n <= 24)) &&
       total(reactants) <= 240 && total(products) <= 240) {
       const countMolecules = sides.reduce((sum, sp) => sum + sp.coefficient, 0);
-      spec = countMolecules <= 6 && sides.every((sp) => sp.structure !== null) ?
+      spec = countMolecules <= 24 && sides.every((sp) => sp.structure !== null) ?
         molecularReactionScene(reactants, products) : reactionScene(reactants, products);
     }
   }
