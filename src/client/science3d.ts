@@ -313,7 +313,28 @@ export function transcriptionScene(coding: string, transcript: string): SceneSpe
     frames: size + 1, extent: 1.8,
     frameLabel: (f) => f + '/' + size + ' nucleotides transcribed' + (coding.length > size ? ' (preview capped)' : ''),
     at(step) {
-      const parts = dnaScene(coding.slice(0, size)).at(0);
+      // Draw a small, local transcription bubble. The opened region closes behind the
+      // schematic polymerase rather than leaving the entire helix permanently separated.
+      const parts: SciencePrimitive[] = [];
+      const pair: Record<string, string> = { A: 'T', T: 'A', G: 'C', C: 'G', N: 'N' };
+      let lastCoding: V3 | null = null;
+      let lastTemplate: V3 | null = null;
+      for (let i = 0; i < size; i++) {
+        const opened = step < size && Math.abs(i - step) <= 2;
+        const scale = opened ? 1 + .8 * (1 - Math.abs(i - step) / 3) : 1;
+        const c = basesPosition(i, size);
+        const t = basesPosition(i, size, -1);
+        const a: V3 = [c[0], c[1] * scale, c[2] * scale];
+        const b: V3 = [t[0], t[1] * scale, t[2] * scale];
+        parts.push(ball(a, nucleotideColor(coding[i]), .07, coding[i]));
+        parts.push(ball(b, nucleotideColor(pair[coding[i]]), .07, pair[coding[i]]));
+        if (!opened) parts.push(line(a, b, '#a4b4bd', 1));
+        if (lastCoding && lastTemplate) {
+          parts.push(line(lastCoding, a, '#7ca981', 3));
+          parts.push(line(lastTemplate, b, '#a49cba', 3));
+        }
+        lastCoding = a; lastTemplate = b;
+      }
       for (let i = 0; i < step; i++) {
         const x = (i - (size - 1) / 2) * (2.1 / Math.max(size - 1, 1));
         const p = point(x, -.68, -.48);
