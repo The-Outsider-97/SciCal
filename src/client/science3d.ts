@@ -26,15 +26,18 @@ export interface SceneSpec {
   frames?: number;
   extent?: number;
   modes?: Array<{ id: string; label: string }>;
-  at(frame: number, mode?: string): SciencePrimitive[];
+  paletteToggle?: boolean;
+  at(frame: number, mode?: string, palette?: 'default' | 'accessible'): SciencePrimitive[];
   onPick?(selection: SceneSelection): void;
   selectionDescription?(selection: SceneSelection): string;
   frameLabel?(frame: number): string;
 }
-const BASE: Record<string, string> = {
-  A: '#218b56', T: '#8a55ac', U: '#d54e55', C: '#287cce', G: '#d3a71b', N: '#7d8794',
+export const NUCLEOTIDE_PALETTES: Record<'default' | 'accessible', Record<string, string>> = {
+  default: { A: '#218b56', T: '#8a55ac', U: '#d54e55', C: '#287cce', G: '#d3a71b', N: '#7d8794' },
+  accessible: { A: '#009e73', T: '#cc79a7', U: '#d55e00', C: '#0072b2', G: '#e69f00', N: '#838b94' },
 };
-export const nucleotideColor = (base: string): string => BASE[base] ?? BASE.N;
+export const nucleotideColor = (base: string, palette: 'default' | 'accessible' = 'default'): string =>
+  NUCLEOTIDE_PALETTES[palette][base] ?? NUCLEOTIDE_PALETTES[palette].N;
 const clamp = (n: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, n));
 const node = <K extends keyof HTMLElementTagNameMap>(tag: K, text?: string): HTMLElementTagNameMap[K] => {
   const el = document.createElement(tag);
@@ -62,6 +65,7 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
   let pickedGroup = '';
   let lastSelection: SceneSelection | null = null;
   let mode = spec.modes?.[0]?.id ?? 'default';
+  let palette: 'default' | 'accessible' = 'default';
   let focusPoint: V3 = [0, 0, 0];
   let focusAnimation = 0;
   const reducedMotion = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -69,6 +73,7 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
   let lastPick: Array<{ x: number; y: number; r: number; depth: number; selection: SceneSelection; ends?: [number, number, number, number] }> = [];
   let cacheFrame = -1;
   let cacheMode = '';
+  let cachePalette = '';
   let cacheParts: SciencePrimitive[] = [];
   const el = node('div');
   el.className = 'science-scene';
@@ -132,6 +137,21 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
       display.append(option);
     }
     display.addEventListener('change', () => { mode = display.value; cacheFrame = -1; draw(); });
+    controls.append(display);
+  }
+  if (spec.paletteToggle) {
+    const display = node('select');
+    display.setAttribute('aria-label', 'Nucleotide color palette');
+    for (const id of ['default', 'accessible'] as const) {
+      const option = node('option', id === 'default' ? 'Nucleotide colors: default' : 'Nucleotide colors: accessible');
+      option.value = id;
+      display.append(option);
+    }
+    display.addEventListener('change', () => {
+      palette = display.value === 'accessible' ? 'accessible' : 'default';
+      cacheFrame = -1;
+      draw();
+    });
     controls.append(display);
   }
   if (total > 1) transport.append(play, back, timeline, forward, rate, status, button('Restart', () => {
@@ -208,10 +228,11 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
     ctx.fillRect(0, 0, w, h);
     const projection = makeProjector(cam, w, h);
     const project = (p: V3) => projection.project([(p[0] - focusPoint[0]) / extent, (p[1] - focusPoint[1]) / extent, (p[2] - focusPoint[2]) / extent]);
-    if (cacheFrame !== frame || cacheMode !== mode) {
-      cacheParts = spec.at(frame, mode);
+    if (cacheFrame !== frame || cacheMode !== mode || cachePalette !== palette) {
+      cacheParts = spec.at(frame, mode, palette);
       cacheFrame = frame;
       cacheMode = mode;
+      cachePalette = palette;
     }
     const objects = cacheParts;
     lastPick = [];
@@ -506,7 +527,8 @@ export function dnaHelixPosition(i: number, size: number, strand: 1 | -1 = 1, bu
   return [x, Math.cos(theta) * rad, Math.sin(theta) * rad];
 }
 /** Generates continuous round-capped sugar–phosphate tubes and color-coded base rods. */
-export function dnaPrimitives(sequence: string, mode = 'full', bubble = -1000): SciencePrimitive[] {
+export function dnaPrimitives(sequence: string, mode = 'full', bubble = -1000,
+  palette: 'default' | 'accessible' = 'default'): SciencePrimitive[] {
   const size = sequence.length;
   const withBackbone = mode !== 'bases';
   const withBases = mode !== 'backbone';
@@ -530,10 +552,10 @@ export function dnaPrimitives(sequence: string, mode = 'full', bubble = -1000): 
       // Deliberately leave a short inter-base gap for schematic noncovalent H bonds.
       const innerA = blend3(a, b, open ? .28 : .455);
       const innerB = blend3(b, a, open ? .28 : .455);
-      parts.push(rod(a, innerA, nucleotideColor(sequence[i]), .12,
+      parts.push(rod(a, innerA, nucleotideColor(sequence[i], palette), .12,
         sequence[i] + ' · coding · position ' + (i + 1), 'dna-coding-' + (i + 1), codon));
       const complement = dnaComplement[sequence[i]] ?? 'N';
-      parts.push(rod(b, innerB, nucleotideColor(complement), .12,
+      parts.push(rod(b, innerB, nucleotideColor(complement, palette), .12,
         complement + ' · template · position ' + (i + 1), 'dna-template-' + (i + 1), codon));
       if (showHydrogen && !open && complement !== 'N') {
         const pairs = sequence[i] === 'C' || sequence[i] === 'G' ? 3 : 2;
@@ -558,7 +580,8 @@ export function dnaScene(sequence: string): SceneSpec {
     extent: Math.max(2.45, seq.length * DNA_HELIX.riseNm * .35),
     modes: [{ id: 'full', label: 'Backbones + bases' }, { id: 'hydrogen', label: '+ schematic hydrogen bonds' },
       { id: 'backbone', label: 'Backbones only' }, { id: 'bases', label: 'Cylindrical bases only' }],
-    at: (_frame, mode = 'full') => dnaPrimitives(seq, mode),
+    paletteToggle: true,
+    at: (_frame, mode = 'full', palette = 'default') => dnaPrimitives(seq, mode, -1000, palette),
   };
 }
 export function rnaBackbonePosition(i: number, size: number): V3 {
@@ -567,7 +590,8 @@ export function rnaBackbonePosition(i: number, size: number): V3 {
   const theta = i * .50;
   return [x, .72 * Math.cos(theta), .72 * Math.sin(theta)];
 }
-export function rnaPrimitives(sequence: string, mode = 'full'): SciencePrimitive[] {
+export function rnaPrimitives(sequence: string, mode = 'full',
+  palette: 'default' | 'accessible' = 'default'): SciencePrimitive[] {
   const parts: SciencePrimitive[] = [];
   const size = sequence.length;
   if (mode !== 'bases' && size > 1) {
@@ -580,7 +604,7 @@ export function rnaPrimitives(sequence: string, mode = 'full'): SciencePrimitive
     const backbone = rnaBackbonePosition(i, size);
     const radial: V3 = [0, Math.cos(i * .50), Math.sin(i * .50)];
     const end = add3(backbone, multiply3(radial, .52));
-    parts.push(rod(backbone, end, nucleotideColor(sequence[i]), .115,
+    parts.push(rod(backbone, end, nucleotideColor(sequence[i], palette), .115,
       sequence[i] + ' · RNA · position ' + (i + 1), 'rna-' + (i + 1), 'codon-' + (Math.floor(i / 3) + 1)));
   }
   return parts;
@@ -592,8 +616,8 @@ export function rnaScene(sequence: string): SceneSpec {
       'Illustrative helical path, NOT a predicted RNA fold. Showing ' + seq.length + ' bases.',
     extent: Math.max(2.20, seq.length * .34 * .35),
     modes: [{ id: 'full', label: 'Backbone + bases' }, { id: 'backbone', label: 'Backbone only' },
-      { id: 'bases', label: 'Bases only' }],
-    at: (_frame, mode = 'full') => rnaPrimitives(seq, mode),
+      { id: 'bases', label: 'Bases only' }], paletteToggle: true,
+    at: (_frame, mode = 'full', palette = 'default') => rnaPrimitives(seq, mode, palette),
   };
 }
 export function transcriptionScene(coding: string, transcript: string): SceneSpec {
@@ -602,15 +626,15 @@ export function transcriptionScene(coding: string, transcript: string): SceneSpe
   return {
     description: 'Schematic RNA polymerase moves along DNA template 3′→5′ and synthesizes RNA 5′→3′. ' +
       'DNA strands open locally and reanneal. This does not simulate enzyme kinetics or promoters.',
-    frames: size + 1, extent: Math.max(2.6, size * DNA_HELIX.riseNm * .35),
+    frames: size + 1, extent: Math.max(2.6, size * DNA_HELIX.riseNm * .35), paletteToggle: true,
     frameLabel: (f) => f + '/' + size + ' nucleotides transcribed' + (coding.length > size ? ' (preview capped)' : ''),
-    at(step) {
-      const parts = dnaPrimitives(displayCoding, 'full', step < size ? step : -1000);
+    at(step, _mode, palette = 'default') {
+      const parts = dnaPrimitives(displayCoding, 'full', step < size ? step : -1000, palette);
       for (let i = 0; i < step; i++) {
         const x = (i - (size - 1) / 2) * DNA_HELIX.riseNm;
         const current: V3 = [x, -1.6, -1.15];
         const end: V3 = [x, -1.98, -1.15 + .12 * Math.sin(i * .5)];
-        parts.push(rod(current, end, nucleotideColor(displayRna[i]), .09,
+        parts.push(rod(current, end, nucleotideColor(displayRna[i], palette), .09,
           displayRna[i] + ' · transcript · position ' + (i + 1), 'transcript-' + i, 'mrna'));
         if (i) {
           const prev: V3 = [(i - 1 - (size - 1) / 2) * DNA_HELIX.riseNm, -1.6, -1.15];
