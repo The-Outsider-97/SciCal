@@ -39,6 +39,12 @@ export const NUCLEOTIDE_PALETTES: Record<'default' | 'accessible', Record<string
 export const nucleotideColor = (base: string, palette: 'default' | 'accessible' = 'default'): string =>
   NUCLEOTIDE_PALETTES[palette][base] ?? NUCLEOTIDE_PALETTES[palette].N;
 const clamp = (n: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, n));
+/** Resolve playback frame exactly, without losing fractional timing in the RAF caller. */
+export function animationFrameIndex(requested: number, total: number, loop: boolean): number {
+  const count = Math.max(1, Math.trunc(total));
+  const index = Number.isFinite(requested) ? Math.trunc(requested) : 0;
+  return loop ? ((index % count) + count) % count : clamp(index, 0, count - 1);
+}
 const node = <K extends keyof HTMLElementTagNameMap>(tag: K, text?: string): HTMLElementTagNameMap[K] => {
   const el = document.createElement(tag);
   if (text !== undefined) el.textContent = text;
@@ -197,8 +203,7 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
   }
   function setFrame(f: number, fromPlayback = false): void {
     const requested = Math.trunc(f);
-    frame = fromPlayback && infiniteLoop ? ((requested % total) + total) % total :
-      clamp(requested, 0, total - 1);
+    frame = animationFrameIndex(requested, total, fromPlayback && infiniteLoop);
     timeline.value = String(frame);
     status.textContent = (spec.frameLabel?.(frame) ?? ('Step ' + frame + '/' + (total - 1))) +
       (infiniteLoop ? ' · looping' : '');
