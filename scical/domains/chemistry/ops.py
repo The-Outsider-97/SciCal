@@ -1,7 +1,11 @@
 """Chemistry operations that the API exposes: periodic table, molar mass, balancing, stoichiometry, empirical formulas."""
 from __future__ import annotations
 
+import json
+from collections import Counter
 from decimal import Decimal
+from functools import lru_cache
+from pathlib import Path
 from fractions import Fraction
 from typing import Any
 
@@ -42,6 +46,33 @@ def element_info(params: dict, s: Settings) -> dict:
     return {"ok": True, "element": out, "meta": E.meta()}
 
 
+@lru_cache(maxsize=1)
+def _molecular_structures() -> dict[str, dict]:
+    """Curated reference coordinates, explicitly separate from chemical formula parsing."""
+    source = Path(__file__).resolve().parent.parent.parent / "data" / "molecular_structures.json"
+    raw = json.loads(source.read_text(encoding="utf-8"))
+    return {str(entry["formula"]): entry for entry in raw["models"]}
+
+
+def _validated_structure(formula: Any) -> dict | None:
+    """Never invent coordinates, connectivity or ionic structures from an empirical formula."""
+    if formula.charge or formula.parts:
+        return None
+    structure = _molecular_structures().get(formula.text)
+    if structure is None or structure["charge"] != 0:
+        return None
+    actual = dict(Counter(atom["element"] for atom in structure["atoms"]))
+    if actual != dict(formula.comp):
+        return None
+    atoms = structure["atoms"]
+    if any(not isinstance(atom.get("xyz"), list) or len(atom["xyz"]) != 3 for atom in atoms):
+        return None
+    if any(bond["a"] not in range(len(atoms)) or bond["b"] not in range(len(atoms))
+           or bond["a"] == bond["b"] for bond in structure["bonds"]):
+        return None
+    return structure
+
+
 # ------------------------------------------------------------------------------------------------------------------ molar mass
 def molar_mass_op(params: dict, s: Settings) -> dict:
     f = parse_formula(C.text(params, "formula"))
@@ -58,6 +89,9 @@ def molar_mass_op(params: dict, s: Settings) -> dict:
         out.warn(n)
     data = {"formula": f.text, "pretty": f.pretty(), "latex": f.latex(), "hill": f.hill(), "charge": f.charge,
             "molarMass": out.num(D(total), "g/mol"), "composition": rows, "atoms": f.atoms()}
+    geometry = _validated_structure(f)
+    if geometry:
+        data["molecularStructure3d"] = geometry
     if u is not None:
         data["uncertainty"] = out.num(D(u), "g/mol")
     if f.parts:
@@ -90,9 +124,11 @@ def balance_op(params: dict, s: Settings) -> dict:
     if res["verification"]["balanced"]:
         res["atomInventory3d"] = {
             "kind": "schematic-stoichiometric-composition",
-            "reactants": [{"species": item.text, "coefficient": int(coef), "atoms": dict(item.formula.comp)}
+            "reactants": [{"species": item.text, "coefficient": int(coef), "atoms": dict(item.formula.comp),
+                           "structure": _validated_structure(item.formula)}
                           for item, coef in zip(left, res["coefficients"][:len(left)])],
-            "products": [{"species": item.text, "coefficient": int(coef), "atoms": dict(item.formula.comp)}
+            "products": [{"species": item.text, "coefficient": int(coef), "atoms": dict(item.formula.comp),
+                          "structure": _validated_structure(item.formula)}
                          for item, coef in zip(right, res["coefficients"][len(left):])],
             "verified": True,
             "warning": "Schematic atom inventory, not validated molecular geometry or reaction dynamics.",
