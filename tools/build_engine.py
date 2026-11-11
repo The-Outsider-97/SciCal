@@ -40,6 +40,10 @@ def main() -> int:
         print("PyInstaller is missing. Run: python -m pip install -r requirements.txt pyinstaller", file=sys.stderr)
         return 2
 
+    slai = ROOT.parent.parent                              # applications/SciCal -> the SLAI checkout this is built from
+    if not (slai / "src" / "utils" / "sldc.py").is_file():
+        print(f"SciCal must be built from inside a SLAI checkout (applications/SciCal); {slai} is not one.", file=sys.stderr)
+        return 2
     work = ROOT / "build" / "engine"
     shutil.rmtree(work, ignore_errors=True)
     run(sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onedir", "--name", "scical-engine",
@@ -62,6 +66,8 @@ def main() -> int:
         shutil.copytree(icons, out / "client" / "assets")
     else:
         print(f"WARNING: {icons} not found: the tab icons will be missing. Build from a SLAI checkout.", file=sys.stderr)
+    (out / "slai_root.txt").write_text(str(slai), encoding="utf-8")              # the app runs SciCal in this checkout's Python environment
+    print(f"The app will run SciCal in the SLAI environment of {slai}.")
     print(f"\nThe engine is in {out}\nTry it:  {out / ('scical-engine.exe' if sys.platform.startswith('win') else 'scical-engine')} --no-browser --port-fallback --ready-line")
     return 0
 

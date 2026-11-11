@@ -43,6 +43,11 @@ def find_slai_root(explicit: str | os.PathLike[str] | None = None) -> Path | Non
         candidates.append(Path(explicit))
     if os.environ.get("SLAI_ROOT"):
         candidates.append(Path(os.environ["SLAI_ROOT"]))
+    if getattr(sys, "frozen", False):                                  # the installed app: the checkout it was built from (slai_root.txt)
+        from ..linked import baked_root
+        b = baked_root()
+        if b is not None:
+            candidates.append(b)
     candidates.extend(Path(__file__).resolve().parents)
     for c in candidates:
         try:

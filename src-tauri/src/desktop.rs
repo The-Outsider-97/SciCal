@@ -84,23 +84,26 @@ fn launch(app: &AppHandle) -> Result<(), String> {
     *ENGINE.lock().unwrap() = Some(Engine { child, _stdin: stdin });
 
     // Read lines until the READY line; keep draining afterwards so the engine never blocks on a full pipe.
-    let (tx, rx) = std::sync::mpsc::channel::<Ready>();
+    let (tx, rx) = std::sync::mpsc::channel::<Result<Ready, String>>();
     std::thread::spawn(move || {
         let mut sent = false;
         for line in BufReader::new(stdout).lines().map_while(Result::ok) {
             if !sent {
                 if let Some(json) = line.strip_prefix("SCICAL_READY ") {
                     if let Ok(ready) = serde_json::from_str::<Ready>(json) {
-                        let _ = tx.send(ready);
+                        let _ = tx.send(Ok(ready));
                         sent = true;
                     }
+                } else if let Some(message) = line.strip_prefix("SCICAL_ERROR ") {
+                    let _ = tx.send(Err(message.to_string()));
+                    sent = true;
                 }
             }
         }
     });
     let ready = rx
         .recv_timeout(START_TIMEOUT)
-        .map_err(|_| "The SciCal engine did not start in time. Check that the app was installed completely.".to_string())?;
+        .map_err(|_| "The SciCal engine did not start in time. Check that the app was installed completely.".to_string())??;
 
     let window = app.get_webview_window("main").ok_or("The main window is missing")?;
     let target = serde_json::to_string(&ready.url).map_err(|e| e.to_string())?;

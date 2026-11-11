@@ -27,7 +27,15 @@ def _worker_main(conn: Any) -> None:
         resource.setrlimit(resource.RLIMIT_AS, (MEMORY_LIMIT_BYTES, MEMORY_LIMIT_BYTES))
     except Exception:  # noqa: BLE001 - not available on Windows; the timeout still protects the server
         pass
-    from . import tasks
+    try:
+        from . import tasks
+    except BaseException:  # noqa: BLE001 - tell the parent why, instead of just disappearing
+        import traceback
+        try:
+            conn.send(("failed", traceback.format_exc()[-600:]))
+        except Exception:  # noqa: BLE001
+            pass
+        return
     try:
         tasks.run({"kind": "ping"})
         import sympy  # noqa: F401  (warm the heavy imports before the first real task)
@@ -64,17 +72,31 @@ class Worker:
         self.tasks_done = 0
         self.ready = False
         self.job: str | None = None
+        self.error: str | None = None                     # why the worker could not start, when it said
 
     def wait_ready(self, timeout: float) -> bool:
+        """True once the worker has said it is ready. Returns False at once if the process has died (no waiting out the timeout)."""
         if self.ready:
             return True
-        if self.parent.poll(timeout):
+        end = time.monotonic() + timeout
+        while True:
             try:
-                self.parent.recv()
-                self.ready = True
+                if self.parent.poll(0.2):
+                    kind, detail = self.parent.recv()
+                    if kind == "ready":
+                        self.ready = True
+                    else:
+                        self.error = str(detail)
+                    return self.ready
             except (EOFError, OSError):
+                self.error = self.error or "the worker process ended before it was ready"
                 return False
-        return self.ready
+            if not self.proc.is_alive():
+                self.error = self.error or f"the worker process ended before it was ready (exit code {self.proc.exitcode})"
+                return False
+            if time.monotonic() >= end:
+                self.error = self.error or f"the worker did not become ready within {timeout:g} seconds"
+                return False
 
     def kill(self) -> None:
         try:
@@ -103,6 +125,7 @@ class Pool:
         self.cancelled: set[str] = set()
         self.closed = False
         self.start_failures = 0
+        self.last_error: str | None = None
         self.stats = {"tasks": 0, "timeouts": 0, "cancelled": 0, "restarts": 0}
         self._spawn_thread: threading.Thread | None = None
 
@@ -148,12 +171,14 @@ class Pool:
                 self.stats["restarts"] += 1
                 w = Worker(self.ctx)
             if not w.wait_ready(60):
+                self.last_error = w.error
                 w.kill()
                 self.stats["restarts"] += 1
                 self.start_failures += 1
-                if self.start_failures >= 3:
+                if self.start_failures >= 2:
                     self.closed = True
-                    raise Busy("The calculation workers could not start. Check that SciCal's Python packages are installed (see the console).")
+                    why = (self.last_error or "").strip().splitlines()
+                    raise Busy("The calculation workers could not start" + (f": {why[-1]}" if why else "") + ".")
                 self.idle.put(Worker(self.ctx))
                 continue
             self.start_failures = 0
