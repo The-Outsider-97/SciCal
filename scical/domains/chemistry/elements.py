@@ -17,7 +17,7 @@ def _load() -> dict:
     by_symbol = {e["symbol"]: e for e in raw["elements"]}
     by_name = {e["name"].lower(): e for e in raw["elements"]}
     by_name.update({"aluminum": by_symbol["Al"], "cesium": by_symbol["Cs"], "sulphur": by_symbol["S"]})
-    return {"meta": raw["meta"], "list": raw["elements"], "sym": by_symbol, "name": by_name}
+    return {"meta": raw["meta"], "list": raw["elements"], "sym": by_symbol, "name": by_name, "reference_mass_numbers": raw.get("referenceMassNumbers")}
 
 
 def all_elements() -> list[dict]:
@@ -48,6 +48,26 @@ def element(key: str | int) -> dict:
     if cap in d["sym"]:
         return d["sym"][cap]
     raise ChemistryError(f"Unknown element '{key}'", hint="Use the symbol (Fe) or name (iron).")
+
+
+
+def reference_isotope_mass_number(z: int) -> int:
+    """Return the explicitly provided educational isotope's A (not an atomic mass).
+
+    Data provenance: user-supplied representative mass-number table, 2026-11-11.
+    It is not AME-validated; never silently use it to calculate atomic masses or
+    imply natural abundance, isotope stability, or individual isotope certainty.
+    """
+    values = _load().get("reference_mass_numbers")
+    if not isinstance(values, list) or len(values) != 118 or not all(
+        isinstance(a, int) and not isinstance(a, bool) and a >= index + 1
+        and (index == 0 or a > index + 1)
+        for index, a in enumerate(values)
+    ):
+        raise ChemistryError("The educational reference isotope mass-number table is incomplete")
+    if not 1 <= z <= 118:
+        raise NotFound(f"There is no element with atomic number {z}")
+    return values[z - 1]
 
 
 def atomic_weight(symbol: str) -> tuple[Decimal, Decimal | None, str]:

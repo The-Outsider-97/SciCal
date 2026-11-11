@@ -44,6 +44,18 @@ def element_info(params: dict, s: Settings) -> dict:
                          "none": "No standard atomic weight: the mass number of the longest-lived isotope, not an average"}[kind]
     if e["isotopes"]:
         out["isotopeNote"] = "Atomic masses from AME2020 (via NIST); abundances from IUPAC/NIST. Only a selection of isotopes is listed."
+    representative = E.reference_isotope_mass_number(int(e["z"]))
+    curated = [dict(item, source="curated") for item in e["isotopes"]]
+    if all(int(item["A"]) != representative for item in curated):
+        curated.append({"A": representative, "mass": None, "abundance": None, "source": "educational_reference"})
+    curated.sort(key=lambda item: int(item["A"]))
+    out["visualIsotopes"] = curated
+    out["defaultVisualIsotopeA"] = representative
+    out["visualIsotopeNote"] = (
+        "Default isotope mass number selected from the user-provided reference table (not independently verified). "
+        "It determines schematic neutron count as A − Z only; it does not establish isotope stability, "
+        "natural abundance, or an exact measured isotope mass. Curated entries retain their separate AME2020 sources."
+    )
     return {"ok": True, "element": out, "meta": E.meta()}
 
 

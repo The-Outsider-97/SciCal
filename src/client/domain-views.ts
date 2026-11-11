@@ -129,16 +129,28 @@ export function elementDialog(res: R): void {
     ['Electron configuration', str(e.configuration)],
   ];
   const iso = rows(e.isotopes);
+  const visualizationIsotopes = rows(e.visualIsotopes);
   const body = h('div', { style: { display: 'grid', gap: '.9rem' } },
     h('div', { class: 'kvs' }, facts.filter(([, v]) => v).map(([k, v]) => h('div', { class: 'kv' }, h('div', { class: 'k', text: k }), h('div', { class: 'v', text: v })))),
     str(e.configurationNote) ? h('p', { class: 'muted', text: str(e.configurationNote) }) : null,
     str(e.weightNote) ? h('p', { class: 'muted', text: str(e.weightNote) }) : null,
-    iso.length ? h('div', null, h('div', { class: 'sectitle', text: 'Isotopes' }), simpleTable(iso)) : h('p', { class: 'muted', text: 'No isotope data is stored for this element.' }));
+    iso.length ? h('div', null, h('div', { class: 'sectitle', text: 'Curated isotope masses' }), simpleTable(iso)) :
+      h('p', { class: 'muted', text: 'No independently curated isotope masses are stored for this element. ' +
+        'The atomic visualization uses a separately labeled reference mass number.' }));
   const sceneHost = h('div');
-  const isotope = h('select', { 'aria-label': 'Isotope' },
-    iso.length ? iso.map((item) => h('option', { value: String(item.A), text: String(e.symbol) + '-' + String(item.A) })) : h('option', { value: '', text: 'No validated isotope data in SciCal' }));
-  // A missing mass number must NOT be substituted with a rounded average atomic weight.
-  isotope.disabled = iso.length === 0;
+  const isotope = h('select', { 'aria-label': 'Isotope used for schematic nuclear composition' },
+    visualizationIsotopes.length ? visualizationIsotopes.map((item) =>
+      h('option', { value: String(item.A),
+        text: String(e.symbol) + '-' + String(item.A) +
+          (item.source === 'educational_reference' ? ' · reference (unverified)' : ' · curated') }))
+      : h('option', { value: '', text: 'No isotope mass number available' }));
+  // A reference isotope only supplies A for nucleon counts; it cannot provide
+  // a measured isotope mass or abundance. Never round average atomic weight.
+  isotope.disabled = visualizationIsotopes.length === 0;
+  const preferredMass = Number(e.defaultVisualIsotopeA);
+  if (visualizationIsotopes.some((item) => Number(item.A) === preferredMass))
+    isotope.value = String(preferredMass);
+  const isotopeSource = h('p', { class: 'muted', 'aria-live': 'polite' });
   const charge = h('input', { type: 'number', min: '-3', max: String(Math.min(3, Number(e.z))), step: '1', value: '0', 'aria-label': 'Net ionic charge' });
   const mode = h('select', { 'aria-label': 'Atomic display mode' },
     h('option', { value: 'shell', text: 'Educational electron shells' }),
@@ -162,7 +174,7 @@ export function elementDialog(res: R): void {
     h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { class: 'label', text: 'Isotope' }), isotope),
       h('label', { class: 'field' }, h('span', { class: 'label', text: 'Ion charge (e)' }), charge),
       h('label', { class: 'field' }, h('span', { class: 'label', text: 'Display mode' }), mode), orbitalField),
-    dataLine, crumbs, sceneHost, inspection, standardModelExplorer()));
+    dataLine, isotopeSource, crumbs, sceneHost, inspection, standardModelExplorer()));
   let current: ScienceScene | null = null;
   const inspectParticle = (selected: SceneSelection): void => {
     const particle = selected.id.startsWith('proton-') ? 'proton' :
@@ -197,7 +209,15 @@ export function elementDialog(res: R): void {
   const update = (): void => {
     current?.destroy();
     const z = Number(e.z);
-    const mass = iso.length ? Number(isotope.value) : null;
+    const mass = visualizationIsotopes.length ? Number(isotope.value) : null;
+    const choice = visualizationIsotopes.find((item) => Number(item.A) === mass);
+    isotopeSource.textContent = mass === null ?
+      'No isotope mass number is available for this element.' :
+      choice?.source === 'educational_reference' ?
+        'Reference isotope ' + String(e.symbol) + '-' + mass + ' is from the supplied educational table (not independently validated). ' +
+        'The displayed neutron count is A − Z; stability and exact isotope mass are not inferred.' :
+        'Curated isotope ' + String(e.symbol) + '-' + mass + ': atomic mass data from AME2020/NIST where recorded. ' +
+        'Nucleon positions remain schematic.';
     const q = Number(charge.value);
     if (!Number.isInteger(q) || q < -3 || q > Math.min(3, z)) {
       replace(sceneHost, h('p', { role: 'alert', text: 'Choose an integer charge between -3 and ' + Math.min(3, z) + '.' }));

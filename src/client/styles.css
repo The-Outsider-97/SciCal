@@ -663,3 +663,22 @@ table.code th { text-align: center; }
   .science-controls select { max-width: min(100%, 210px); }
   .science-canvas { height: clamp(260px, 38vh, 390px); }
 }
+
+
+/* Atomic model: infinite-loop control and isotope source notes share SciCal's native UI. */
+.science-loop-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  white-space: nowrap;
+  cursor: pointer;
+  font-size: .83rem;
+  color: var(--text);
+}
+.science-loop-toggle input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.science-loop-toggle:focus-within { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }

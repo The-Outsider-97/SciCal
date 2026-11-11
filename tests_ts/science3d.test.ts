@@ -5,6 +5,7 @@ import {
   translationScene, reactionScene, moleculeScene, molecularReactionScene,
   orbitalAngularScene, nucleusScene, rnaProcessingScene, packedNucleus, nucleusParticles,
   electronOrbits, NUCLEON_RADIUS, EDUCATIONAL_ELECTRON_RADIUS,
+  ELECTRON_TRACK_GAP, animationFrameIndex,
   DNA_HELIX, dnaHelixPosition, layoutMoleculeInstances, placementsDoNotOverlap,
   valenceQuarkScene, type SciencePrimitive, type MolecularStructure,
   type StructuredReactionSpecies,
@@ -82,6 +83,39 @@ test('electron paths are individual, outside the nucleus, with exactly 20% small
   const orbits = electronOrbits([2, 6], envelope);
   assert.equal(orbits.length, 8);
   assert.equal(new Set(orbits.map((o) => o.id)).size, 8);
+});
+
+test('each educational electron orbit is disjoint for every shell, including 118 electrons', () => {
+  const shellPopulations = [2, 8, 18, 32, 32, 18, 8];
+  const orbits = electronOrbits(shellPopulations, 1.4);
+  assert.equal(orbits.length, 118);
+  assert.ok(ELECTRON_TRACK_GAP > 2 * EDUCATIONAL_ELECTRON_RADIUS);
+  for (let i = 0; i < orbits.length; i++) {
+    assert.ok(orbits[i].radius > 1.4 + EDUCATIONAL_ELECTRON_RADIUS);
+    near(Math.hypot(...orbits[i].u), 1);
+    near(Math.hypot(...orbits[i].v), 1);
+    near(orbits[i].u.reduce((s, n, j) => s + n * orbits[i].v[j], 0), 0);
+    if (i > 0) {
+      assert.ok(orbits[i].radius - orbits[i - 1].radius >= ELECTRON_TRACK_GAP - 1e-10,
+        'electron paths must be disjoint and leave room for visible spheres');
+      assert.deepEqual(orbits[i].u, orbits[0].u, 'shared plane prevents crossing circles');
+      assert.deepEqual(orbits[i].v, orbits[0].v, 'shared plane prevents crossing circles');
+    }
+  }
+  const sodium = atomScene(11, 23, 0, '[Ne] 3s1');
+  assert.equal(sodium.at(0).filter((p) => p.kind === 'ball' && p.id?.startsWith('electron-')).length, 11);
+  assert.match(sodium.description, /nonintersecting/);
+});
+
+test('once, Continue and infinite loop index correctly for all bounded scenes', () => {
+  assert.equal(animationFrameIndex(90, 90, false), 89);
+  assert.equal(animationFrameIndex(89, 90, false), 89);
+  assert.equal(animationFrameIndex(90, 90, true), 0);
+  assert.equal(animationFrameIndex(95, 90, true), 5);
+  assert.equal(animationFrameIndex(180, 90, true), 0);
+  assert.equal(animationFrameIndex(-1, 90, true), 89);
+  assert.equal(animationFrameIndex(1, 1, true), 0);
+  assert.equal(animationFrameIndex(Infinity, 90, true), 0);
 });
 
 test('B-DNA helix is right-handed with continuous antiparallel strands and rods (not spheres)', () => {
