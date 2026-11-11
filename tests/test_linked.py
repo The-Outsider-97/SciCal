@@ -61,9 +61,9 @@ class LinkedLaunch(unittest.TestCase):
         self.point_at(root)
         out = io.StringIO()
         with redirect_stdout(out):
-            code = run_linked(["--no-browser", "--ready-line"], self.base, dict(os.environ))
+            code = run_linked(["--no-browser", "--ready-line"], self.base, dict(os.environ, XDG_DATA_HOME=self.tmp.name))
         self.assertEqual(code, 0)
-        self.assertEqual(out.getvalue().strip(), f"SCICAL_READY {root.resolve()} --no-browser --ready-line")
+        self.assertEqual(out.getvalue().strip(), f"SCICAL_READY {root.resolve()} --no-browser --ready-line --worker-mode thread")
 
     def test_the_environment_variable_wins_over_the_note(self):
         root = make_checkout(Path(self.tmp.name), "")
@@ -73,7 +73,7 @@ class LinkedLaunch(unittest.TestCase):
     def test_a_crash_before_ready_is_an_error_not_a_silent_switch(self):
         self.point_at(make_checkout(Path(self.tmp.name), "import sys\nsys.exit(3)\n"))
         with self.assertRaises(LinkedError) as cm, redirect_stdout(io.StringIO()):
-            run_linked([], self.base, dict(os.environ))
+            run_linked([], self.base, dict(os.environ, XDG_DATA_HOME=self.tmp.name))
         self.assertIn("exit code 3", str(cm.exception))
 
 

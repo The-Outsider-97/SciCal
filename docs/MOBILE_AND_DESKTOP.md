@@ -80,7 +80,7 @@ Rust crates and takes several minutes.
 
 Notes:
 
-* **SLAI is part of the Windows app.** `build_engine.py` must run inside a SLAI checkout (`applications/SciCal`); it writes the checkout's location to `engine\slai_root.txt`. At start-up the launcher runs `python -m scical` from `<SLAI>\venv`. There is no silent fallback to a SLAI-less engine: if the checkout moved, `venv` is missing, or a package is missing, the app's window says exactly that. After moving the SLAI folder, rebuild the installer (or set `SLAI_ROOT`).
+* **SLAI is part of the Windows app.** `build_engine.py` must run inside a SLAI checkout (`applications/SciCal`); it writes the checkout's location to `engine\slai_root.txt`. At start-up the launcher runs `python -m scical` from `<SLAI>\venv`. There is no silent fallback to a SLAI-less engine: if the checkout moved, `venv` is missing, or a package is missing, the app's window says exactly that. After moving the SLAI folder, rebuild the installer (or set `SLAI_ROOT`). The app calculates inside the engine (threads, `--worker-mode thread`, like StringLab) so there is nothing extra to start; the engine's messages go to `%LOCALAPPDATA%\SLAI\SciCal\engine.log`.
 * The engine folder `src-tauri\engine\` is made by `python tools\build_engine.py` (PyInstaller, one folder, with the web client inside).
   To test the frozen engine on its own: `src-tauri\engine\scical-engine.exe --no-browser --port-fallback --ready-line` prints a ready
   line with the address.

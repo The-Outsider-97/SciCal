@@ -83,15 +83,35 @@ def find_linked(base: Path | None = None, env: Mapping[str, str] | None = None) 
     return py, root, app
 
 
+def log_path(env: Mapping[str, str] | None = None) -> Path:
+    env = os.environ if env is None else env
+    if os.name == "nt":
+        base = Path(env.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "SLAI" / "SciCal"
+    else:
+        base = Path(env.get("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "slai" / "scical"
+    return base / "engine.log"
+
+
 def run_linked(argv: Sequence[str], base: Path | None = None, env: Mapping[str, str] | None = None) -> int:
     """Start SciCal in the SLAI environment and wait for it; returns its exit code. The engine's ``SCICAL_READY`` line is passed on, so the app
     that started us sees it as before. Raises ``LinkedError`` when the environment cannot be used."""
     py, root, app = find_linked(base, env)
+    args = list(argv)
+    if "--worker-mode" not in args:                         # the desktop app calculates inside the engine (as StringLab does): nothing extra to start
+        args += ["--worker-mode", "thread"]
+    try:                                                    # what the engine prints on stderr goes to a log file the person can open
+        log_file = log_path(env)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        if log_file.exists() and log_file.stat().st_size > 1_000_000:
+            log_file.replace(log_file.with_suffix(".old"))
+        err = open(log_file, "a", encoding="utf-8", errors="replace")
+    except OSError:
+        err = subprocess.DEVNULL
     child_env = dict(os.environ if env is None else env)
     child_env.update(SLAI_ROOT=str(root), PYTHONUNBUFFERED="1", PYTHONUTF8="1",
                      PYTHONPATH=os.pathsep.join(p for p in (str(app), child_env.get("PYTHONPATH", "")) if p))
     try:
-        proc = subprocess.Popen([str(py), "-m", "scical", *argv], cwd=str(app), env=child_env, stdout=subprocess.PIPE, text=True,
+        proc = subprocess.Popen([str(py), "-m", "scical", *args], cwd=str(app), env=child_env, stdout=subprocess.PIPE, stderr=err, text=True,
                                 encoding="utf-8", errors="replace", creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0)
     except OSError as exc:
         raise LinkedError(f"SLAI's Python ({py}) could not be started: {exc}") from exc
@@ -103,5 +123,5 @@ def run_linked(argv: Sequence[str], base: Path | None = None, env: Mapping[str, 
         sys.stdout.flush()
     code = proc.wait()
     if not ready and code != 0:
-        raise LinkedError(f"SciCal stopped while starting in the SLAI environment ({py}, exit code {code}).")
+        raise LinkedError(f"SciCal stopped while starting in the SLAI environment ({py}, exit code {code}). Details: {log_path(env)}")
     return code
