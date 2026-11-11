@@ -6,7 +6,7 @@ import { nowIso, newEntryId } from '../../core/session.js';
 import type { Entry, FormOp } from '../../core/types.js';
 import { debounce, isRecord } from '../../core/util.js';
 import { api, ApiError } from '../api.js';
-import { dnaScene, rnaScene, transcriptionScene, translationScene, reactionScene, scientificScene, type StoichSpecies, type TranslationStep } from '../science3d.js';
+import { dnaScene, rnaScene, transcriptionScene, translationScene, reactionScene, scientificScene, type StoichSpecies, type TranslationStep, type ScienceScene, type SceneSpec } from '../science3d.js';
 import { h, replace } from '../dom.js';
 import { buildForm, type FormHandle } from '../domain-form.js';
 import { renderResult, type ResultCtx } from '../domain-results.js';
@@ -26,9 +26,9 @@ const NO_SAVE = new Set(['periodic_table', 'genetic_code', 'units']);
 
 
 /** Draw ONLY source-validated scientific data. Views never change the scientific calculation. */
-function scientificView(domain: string, operation: string, result: R): HTMLElement | null {
+function scientificView(domain: string, operation: string, result: R): ScienceScene | null {
   if (result.ok === false) return null;
-  let spec;
+  let spec: SceneSpec | undefined;
   if (domain === 'biology') {
     if (operation === 'sequence' && typeof result.sceneSequence === 'string')
       spec = result.kind === 'RNA' ? rnaScene(result.sceneSequence) : dnaScene(result.sceneSequence);
@@ -46,14 +46,12 @@ function scientificView(domain: string, operation: string, result: R): HTMLEleme
     const inventory = result.atomInventory3d;
     const clean = (raw: unknown): StoichSpecies[] => (Array.isArray(raw) ? raw.filter(isRecord) : []).map((s) => ({
       species: String(s.species ?? ''), coefficient: Math.max(0, Number(s.coefficient ?? 0)),
-      atoms: Object.fromEntries(Object.entries(isRecord(s.atoms) ? s.atoms : {}).filter(([_, n]) => Number.isInteger(n) && Number(n) >= 0).map(([k, n]) => [k, Number(n)])),
+      atoms: Object.fromEntries(Object.entries(isRecord(s.atoms) ? s.atoms : {}).filter(([_, n]) => Number.isInteger(Number(n)) && Number(n) >= 0).map(([k, n]) => [k, Number(n)])),
     }));
     spec = reactionScene(clean(inventory.reactants), clean(inventory.products));
   }
   if (!spec) return null;
-  return h('div', { class: 'section' },
-    h('div', { class: 'sectitle', text: 'Interactive scientific visualization' }),
-    scientificScene(spec).el);
+  return scientificScene(spec);
 }
 
 /** Fill empty Finance fields from the person's own financial parameters (Constants > Financial parameters). Returns the labels that were filled. */
@@ -87,6 +85,7 @@ export function createDomainView(domainId: string): WorkspaceView {
   let last: { res: R; params: R; op: FormOp } | null = null;
   let periodicCache: R[] | null = null;
   let periodic: ReturnType<typeof periodicTable> | null = null;
+  let activeScientificScene: ScienceScene | null = null;
 
   const opList = h('nav', { class: 'oplist', 'aria-label': `${dom?.title ?? domainId} operations` });
   const title = h('h2');
@@ -116,6 +115,8 @@ export function createDomainView(domainId: string): WorkspaceView {
 
   // ---------------------------------------------------------------------------------------------------------- running
   const showResult = async (res: R, params: R, o: FormOp): Promise<void> => {
+    activeScientificScene?.destroy();
+    activeScientificScene = null;
     last = { res, params, op: o };
     const ctx = ctxFor(o, params);
     const nodes: Node[] = [];
@@ -139,7 +140,11 @@ export function createDomainView(domainId: string): WorkspaceView {
     else if (ok && o.view === 'library') nodes.push(formulaLibrary(res, useFormula));
     else nodes.push(renderResult(res, ctx));
     const visual = scientificView(domainId, o.id, res);
-    if (visual) nodes.splice(1, 0, visual);
+    if (visual) {
+      activeScientificScene = visual;
+      nodes.splice(1, 0, h('div', { class: 'section' },
+        h('div', { class: 'sectitle', text: 'Interactive scientific visualization' }), visual.el));
+    }
     replace(out, ...nodes);
   };
 
@@ -192,6 +197,8 @@ export function createDomainView(domainId: string): WorkspaceView {
   const choose = (id: string, params?: R, go = false): void => {
     const next = ops.find((o) => o.id === id);
     if (!next) return;
+    activeScientificScene?.destroy();
+    activeScientificScene = null;
     op = next;
     state = params ? seed(op, params) : emptyState(op);
     const prefilled = params ? [] : financeDefaults(domainId, op, state);
