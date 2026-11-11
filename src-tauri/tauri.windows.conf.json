@@ -1,0 +1,11 @@
+{
+  "bundle": {
+    "resources": {
+      "engine/": "engine/"
+    },
+    "targets": [
+      "nsis",
+      "msi"
+    ]
+  }
+}

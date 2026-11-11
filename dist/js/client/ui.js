@@ -130,7 +130,24 @@ export async function copyText(text, what = 'Copied') {
         ta.remove();
     }
 }
+/** True inside the phone apps' web views (iOS WKWebView has no "Safari" token; Android WebView says "wv"), where a blob download link does nothing. */
+export function inAppWebView() {
+    if (typeof navigator === 'undefined')
+        return false;
+    const ua = navigator.userAgent;
+    return /; wv\)/.test(ua) || (/(iPhone|iPad|iPod)/.test(ua) && !/Safari/.test(ua));
+}
 export function saveBlob(blob, filename) {
+    const file = typeof File === 'function' ? new File([blob], filename, { type: blob.type || 'application/octet-stream' }) : null;
+    if (file && inAppWebView() && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+        // the share sheet lets the person save to Files, send by mail or open in another app
+        navigator.share({ files: [file], title: filename }).catch((e) => { if (e?.name !== 'AbortError')
+            anchorDownload(blob, filename); });
+        return;
+    }
+    anchorDownload(blob, filename);
+}
+function anchorDownload(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = h('a', { href: url, download: filename });
     document.body.appendChild(a);

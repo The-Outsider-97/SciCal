@@ -221,3 +221,143 @@ class Pool:
                 self.cancelled.add(job_id)
                 return True
         return False
+
+
+# ---------------------------------------------------------------------------------------------------------------------- threads
+class _Stop(BaseException):
+    """Raised inside a calculation thread to end it (a timeout or a cancel). Not an ``Exception``, so a task's own ``except Exception`` cannot swallow it."""
+
+
+def _stop_thread(thread: threading.Thread) -> bool:
+    """Ask CPython to raise ``_Stop`` in `thread` at its next bytecode. Works for pure-Python work such as SymPy; a long call inside C code
+    (one enormous integer power, say) only ends when that call returns."""
+    try:
+        import ctypes
+        n = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_ulong(thread.ident or 0), ctypes.py_object(_Stop))
+        if n > 1:                                                          # more than one thread state matched: undo, never hit the wrong thread
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_ulong(thread.ident or 0), None)
+            return False
+        return n == 1
+    except Exception:  # noqa: BLE001
+        return False
+
+
+class ThreadPool:
+    """The same interface as ``Pool`` for platforms that cannot start worker processes (iOS, Android).
+
+    Each task runs in its own daemon thread. A task that is cancelled or runs too long is stopped with an asynchronous exception, which ends
+    pure-Python work at once. If a thread does not stop (a long call inside C code) it is counted as stuck and no longer takes a slot,
+    and when every slot is stuck SciCal says so and asks for a restart instead of piling up more work.
+
+    Compared with processes there is no memory limit and no hard kill; ``docs/MOBILE_AND_DESKTOP.md`` lists this as a known difference.
+    """
+
+    MAX_STUCK = 3
+
+    def __init__(self, size: int | None = None, default_timeout: float = 30.0, queue_wait: float = 20.0) -> None:
+        self.size = max(1, size or 2)
+        self.default_timeout = default_timeout
+        self.queue_wait = queue_wait
+        self.slots = threading.Semaphore(self.size)
+        self.lock = threading.Lock()
+        self.busy: dict[str, threading.Thread] = {}
+        self.cancelled: set[str] = set()
+        self.stuck: list[threading.Thread] = []
+        self.closed = False
+        self.stats = {"tasks": 0, "timeouts": 0, "cancelled": 0, "restarts": 0}
+
+    def start(self) -> "ThreadPool":
+        def warm() -> None:
+            try:
+                from . import tasks
+                tasks.run({"kind": "ping"})
+                import sympy  # noqa: F401
+            except Exception:  # noqa: BLE001
+                pass
+        threading.Thread(target=warm, name="scical-warm", daemon=True).start()
+        return self
+
+    def close(self) -> None:
+        self.closed = True
+        with self.lock:
+            for t in list(self.busy.values()):
+                _stop_thread(t)
+
+    def status(self) -> dict[str, Any]:
+        self._reap()
+        return {"size": self.size, "idle": max(0, self.size - len(self.busy)), "busy": len(self.busy), "stuck": len(self.stuck), "mode": "threads",
+                **self.stats, "defaultTimeoutS": self.default_timeout}
+
+    def _reap(self) -> None:
+        self.stuck = [t for t in self.stuck if t.is_alive()]
+
+    def submit(self, task: dict[str, Any], job_id: str, timeout: float | None = None) -> dict[str, Any]:
+        timeout = timeout or self.default_timeout
+        self._reap()
+        if len(self.stuck) >= self.MAX_STUCK:
+            raise Busy("Some calculations could not be stopped. Close and reopen SciCal to free them.")
+        if not self.slots.acquire(timeout=self.queue_wait) or self.closed:
+            raise Busy("SciCal is busy with other calculations. Try again in a moment.")
+        box: dict[str, Any] = {}
+        done = threading.Event()
+
+        def run() -> None:
+            from . import tasks
+            try:
+                box["out"] = tasks.run(task)
+            except _Stop:
+                box["stopped"] = True
+            except SciCalError as exc:
+                box["out"] = {"ok": False, "error": exc.to_dict()}
+            except BaseException as exc:  # noqa: BLE001
+                box["out"] = {"ok": False, "error": {"code": "internal_error", "message": f"{type(exc).__name__}: {str(exc)[:200]}"}}
+            finally:
+                done.set()
+
+        thread = threading.Thread(target=run, name=f"scical-task-{job_id[:8]}", daemon=True)
+        with self.lock:
+            self.busy[job_id] = thread
+        self.stats["tasks"] += 1
+        thread.start()
+        released = False
+        try:
+            end = time.monotonic() + timeout
+            while not done.wait(0.1):
+                if job_id in self.cancelled or time.monotonic() >= end:
+                    cancelled = job_id in self.cancelled
+                    self.cancelled.discard(job_id)
+                    _stop_thread(thread)
+                    if not done.wait(1.5):
+                        self.stuck.append(thread)                         # it did not stop: give its slot back but remember it
+                        self.stats["restarts"] += 1
+                    self.stats["cancelled" if cancelled else "timeouts"] += 1
+                    if cancelled:
+                        raise Cancelled("The calculation was cancelled")
+                    raise TimedOut(f"The calculation took longer than {timeout:g} seconds and was stopped",
+                                   hint="Try a simpler input, fewer digits, or a smaller range.")
+            if box.get("stopped"):
+                raise Cancelled("The calculation was stopped")
+            return box["out"]
+        finally:
+            with self.lock:
+                self.busy.pop(job_id, None)
+            if not released:
+                self.slots.release()
+
+    def cancel(self, job_id: str) -> bool:
+        with self.lock:
+            if job_id in self.busy:
+                self.cancelled.add(job_id)
+                return True
+        return False
+
+
+def can_use_processes() -> bool:
+    """False where ``multiprocessing`` cannot start a child (iOS, Android and WebAssembly builds of Python)."""
+    return sys.platform not in ("ios", "android", "emscripten", "wasi") and not os.environ.get("ANDROID_ARGUMENT") and not os.environ.get("SCICAL_NO_PROCESSES")
+
+
+def make_pool(mode: str = "auto", size: int | None = None, default_timeout: float = 30.0) -> "Pool | ThreadPool":
+    """``process`` (a pool of worker processes), ``thread`` (see ``ThreadPool``) or ``auto`` (processes wherever they exist)."""
+    use_threads = mode == "thread" or (mode == "auto" and not can_use_processes())
+    return (ThreadPool if use_threads else Pool)(size, default_timeout).start()

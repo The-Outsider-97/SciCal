@@ -56,6 +56,7 @@ class Settings:
     agents: str = "auto"
     agent_timeout_s: float = field(default_factory=lambda: float(_env_int("SCICAL_AGENT_TIMEOUT_S", 60)))
     open_browser: bool = True
+    worker_mode: str = field(default_factory=lambda: os.environ.get("SCICAL_WORKER_MODE", "auto"))   # auto | process | thread
 
     @property
     def sessions_dir(self) -> Path:

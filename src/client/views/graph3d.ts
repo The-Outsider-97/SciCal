@@ -7,7 +7,9 @@ import {
   type Aspect, type Camera, type RGB, type Screen, type V3,
 } from '../../core/scene3d.js';
 import type { Entry, GraphFigure, Layer3Result, Scene3Result } from '../../core/types.js';
+import { releaseVelocity } from '../../core/motion.js';
 import { clamp, debounce, isRecord, splitPairs } from '../../core/util.js';
+import { CameraMotion, reducedMotion } from '../motion.js';
 import { ApiError, api } from '../api.js';
 import { h, replace } from '../dom.js';
 import { store } from '../store.js';
@@ -78,6 +80,7 @@ export function createGraph3DView(): WorkspaceView {
   let inflight: AbortController | null = null;
   let renderSeq = 0;
   let dragging = false;
+  let animating = false;
   let hoverPt: Pick3 | null = null;
   let pinned: Pick3 | null = null;
   let lastPreps: Prep[] = [];
@@ -152,14 +155,13 @@ export function createGraph3DView(): WorkspaceView {
   });
 
   // ------------------------------------------------------------------------------------------------ requests
-  const requestRender = async (): Promise<void> => {
+  const requestRender = async (quiet = false): Promise<void> => {
     const seq = ++renderSeq;
     inflight?.abort();
     if (!layers.some(hasContent)) { result = null; note.hidden = true; paintLayerInfo(); draw(); return; }
     const ctl = new AbortController();
     inflight = ctl;
-    note.hidden = false;
-    note.textContent = 'Computing…';
+    if (!quiet) { note.hidden = false; note.textContent = 'Computing…'; }       // a slider being played redraws many times a second: no flashing note
     try {
       const res = await api.graph('render3d', buildSpec(), store.settings, contextFor(store.entries, ''), ctl.signal) as unknown as Scene3Result;
       if (seq !== renderSeq) return;
@@ -213,9 +215,15 @@ export function createGraph3DView(): WorkspaceView {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const labels = paint(ctx, w, hgt, { ink: screenInk(), hover: true, fontPx: 12, fast: dragging });
+    const labels = paint(ctx, w, hgt, { ink: screenInk(), hover: true, fontPx: 12, fast: dragging || animating });
     canvas.setAttribute('aria-label', labels.length ? `3D graph of ${labels.join('; ')}. Drag to rotate, shift-drag to move, scroll to zoom, arrow keys rotate, plus and minus zoom, 0 resets the view.` : 'Empty 3D graph. Enter a formula on the left.');
   };
+  const motion = new CameraMotion({
+    get: () => cam,
+    set: (c) => { cam = c; },
+    redraw: (moving) => { animating = moving; draw(); if (!moving) paintViewControls(); },
+    alive: () => el.isConnected,
+  });
   let queued = false;
   const queueDraw = (): void => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; draw(); }); };
 
@@ -464,6 +472,7 @@ export function createGraph3DView(): WorkspaceView {
   };
 
   const pointers = new Map<number, { x: number; y: number }>();
+  let samples3: Array<{ t: number; x: number; y: number }> = [];       // recent drag positions, for the momentum of a flick
   let moved = 0;
   let panMode = false;
   let pinch = 0;
@@ -472,6 +481,8 @@ export function createGraph3DView(): WorkspaceView {
   canvas.addEventListener('pointerdown', (ev) => {
     canvas.setPointerCapture(ev.pointerId);
     pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    motion.interrupt();
+    samples3 = [];
     moved = 0;
     panMode = ev.button === 2 || ev.button === 1 || ev.shiftKey;
     pinch = 0;
@@ -494,6 +505,7 @@ export function createGraph3DView(): WorkspaceView {
     const dx = ev.clientX - prev.x; const dy = ev.clientY - prev.y;
     moved += Math.abs(dx) + Math.abs(dy);
     pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (pointers.size === 1) { samples3.push({ t: performance.now(), x: ev.clientX, y: ev.clientY }); if (samples3.length > 12) samples3.shift(); }
     dragging = true; hoverPt = null; readout.hidden = true;
     const size = Math.min(r.width, r.height);
     if (pointers.size >= 2) {
@@ -519,24 +531,30 @@ export function createGraph3DView(): WorkspaceView {
         live.textContent = hit ? `Point ${hit.label}` : '';
       }
       if (wasDrag || moved < 5) queueDraw();
+      if (wasDrag && !panMode && ev.type === 'pointerup') {
+        const r = rectOf();
+        motion.fling(releaseVelocity(samples3, Math.min(r.width, r.height), performance.now()));      // a flick keeps turning, then settles
+      }
+      motion.resume();
     }
   };
   canvas.addEventListener('pointerup', endPointer);
   canvas.addEventListener('pointercancel', endPointer);
   canvas.addEventListener('pointerleave', () => { if (!pointers.size && hoverPt) { hoverPt = null; readout.hidden = true; queueDraw(); } });
-  canvas.addEventListener('wheel', (ev) => { ev.preventDefault(); cam = zoomBy(cam, ev.deltaY < 0 ? 1.12 : 1 / 1.12); queueDraw(); }, { passive: false });
-  canvas.addEventListener('dblclick', () => { cam = cloneCamera(DEFAULT_CAMERA); queueDraw(); });
+  canvas.addEventListener('wheel', (ev) => { ev.preventDefault(); motion.interrupt(); cam = zoomBy(cam, ev.deltaY < 0 ? 1.12 : 1 / 1.12); queueDraw(); }, { passive: false });
+  canvas.addEventListener('dblclick', () => motion.animateTo(cloneCamera(DEFAULT_CAMERA)));
   canvas.addEventListener('keydown', (ev) => {
     const size = Math.min(canvas.clientWidth, canvas.clientHeight);
     const step = ev.shiftKey ? 60 : 22;
     let handled = true;
+    motion.interrupt();
     if (ev.key === 'ArrowLeft') cam = orbit(cam, -step, 0, size);
     else if (ev.key === 'ArrowRight') cam = orbit(cam, step, 0, size);
     else if (ev.key === 'ArrowUp') cam = orbit(cam, 0, step, size);
     else if (ev.key === 'ArrowDown') cam = orbit(cam, 0, -step, size);
     else if (ev.key === '+' || ev.key === '=') cam = zoomBy(cam, 1.2);
     else if (ev.key === '-' || ev.key === '_') cam = zoomBy(cam, 1 / 1.2);
-    else if (ev.key === '0') cam = cloneCamera(DEFAULT_CAMERA);
+    else if (ev.key === '0') { motion.animateTo(cloneCamera(DEFAULT_CAMERA)); handled = true; ev.preventDefault(); return; }
     else handled = false;
     if (handled) { ev.preventDefault(); queueDraw(); }
   });
@@ -623,6 +641,7 @@ export function createGraph3DView(): WorkspaceView {
     change: () => scheduleRender(),
     remove: (p) => { params = params.filter((x) => x !== p); dismissed.add(p.name); paintSliders(); scheduleRender(); },
     repaint: () => paintSliders(),
+    immediate: () => requestRender(true),
   });
 
   // ------------------------------------------------------------------------------------------------ domain and view controls
@@ -637,7 +656,14 @@ export function createGraph3DView(): WorkspaceView {
   }
   samplesRange.addEventListener('input', () => { samples = Number(samplesRange.value); paintDomain(); scheduleRender(); });
 
-  const setCamera = (patch: Partial<Camera>): void => { cam = clampCamera({ ...cam, ...patch }); draw(); };
+  const spinBtn = h('button', { class: 'btn small', type: 'button', text: 'Spin', 'aria-pressed': 'false', title: 'Turn the scene slowly about the vertical axis' });
+  spinBtn.addEventListener('click', () => {
+    const want = !motion.isSpinning;
+    if (want && !motion.setSpin(true)) { toast(reducedMotion() ? 'Animation is switched off (reduce motion).' : 'The scene cannot spin now.', 'info'); return; }
+    if (!want) motion.setSpin(false);
+  });
+  motion.onChange = (): void => { spinBtn.setAttribute('aria-pressed', String(motion.isSpinning)); spinBtn.classList.toggle('on', motion.isSpinning); };
+  const setCamera = (patch: Partial<Camera>): void => { motion.animateTo(clampCamera({ ...cam, ...patch })); };
 
   const projSel = h('select', { 'aria-label': 'Projection' }, h('option', { value: 'perspective', text: 'Perspective' }), h('option', { value: 'orthographic', text: 'Orthographic' }));
   projSel.addEventListener('change', () => setCamera({ projection: projSel.value as Camera['projection'] }));
@@ -793,14 +819,15 @@ export function createGraph3DView(): WorkspaceView {
         h('div', { class: 'plot-tools' },
           iconButton('plus', 'Zoom in', () => { cam = zoomBy(cam, 1.25); draw(); }),
           h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Zoom out', title: 'Zoom out', on: { click: () => { cam = zoomBy(cam, 0.8); draw(); } } }, h('span', { text: '−', style: { 'font-size': '1.3rem' } })),
-          h('button', { class: 'btn small', type: 'button', text: 'Reset view', on: { click: () => { cam = cloneCamera(DEFAULT_CAMERA); paintViewControls(); draw(); } } }),
+          h('button', { class: 'btn small', type: 'button', text: 'Reset view', on: { click: () => motion.animateTo(cloneCamera(DEFAULT_CAMERA)) } }),
+          spinBtn,
           h('button', { class: 'btn small', type: 'button', text: 'Clear mark', on: { click: () => { pinned = null; draw(); } } }),
           h('span', { class: 'grow' }),
           h('button', { class: 'btn small', type: 'button', text: 'Save PNG', title: 'A picture with a transparent background', on: { click: () => void exportPng() } }),
           h('button', { class: 'btn small', type: 'button', text: 'Add to worksheet', on: { click: () => void saveToWorksheet() } })),
         exportRow,
         wrap,
-        h('p', { class: 'muted', style: { margin: '0', 'font-size': '.82rem' }, text: 'Drag to rotate · shift-drag or right-drag to move · scroll or pinch to zoom · double-click to reset · click a point to mark it · arrow keys, + and − work when the plot is focused.' }),
+        h('p', { class: 'muted', style: { margin: '0', 'font-size': '.82rem' }, text: 'Drag to rotate (a flick keeps turning) · shift-drag, right-drag or two fingers to move · scroll or pinch to zoom · double-click to reset · click a point to mark it · arrow keys, + and − work when the plot is focused.' }),
         statsBox, live),
       savedList('Saved 3D graphs in this worksheet', (e) => e.kind === 'graph' && isRecord(e.spec) && e.spec.mode === '3d', (e) => { if (e.spec) loadSpec(e.spec); })));
 

@@ -67,7 +67,7 @@ class Base(unittest.TestCase):
             const h = {'X-SLAI-SciCal': '1', 'Content-Type': 'application/json'};
             const r = await fetch('/api/sessions', {method: 'POST', headers: h, body: JSON.stringify({name: 'test ' + Date.now()})});
             const id = (await r.json()).data.id;
-            await fetch('/api/prefs', {method: 'PUT', headers: h, body: JSON.stringify({stemVerify: 'ask', workspace: 'math', lastSession: id})});
+            await fetch('/api/prefs', {method: 'PUT', headers: h, body: JSON.stringify({stemVerify: 'ask', workspace: 'math', reducedMotion: false, lastSession: id})});
         }""")
         self.page.reload()
         self.page.wait_for_selector(".topbar")

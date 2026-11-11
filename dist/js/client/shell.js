@@ -41,6 +41,7 @@ export async function show(id) {
     replace(stage, v.el);
     for (const [tid, el] of tabEls)
         el.setAttribute('aria-selected', String(tid === id));
+    tabEls.get(id)?.scrollIntoView?.({ inline: 'center', block: 'nearest' }); // the bottom bar scrolls on a narrow screen
     stage.setAttribute('aria-labelledby', `tab-${id}`);
     document.title = `${TABS.find((t) => t.id === id)?.title ?? ''} · SciCal`;
     return v;

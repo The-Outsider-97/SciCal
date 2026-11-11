@@ -136,7 +136,7 @@ code, kbd, .mono { font-family: var(--font-mono); font-size: .92em; }
 /* ------------------------------------------------------------------ controls */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; padding: .55rem 1rem; border-radius: var(--radius-sm); border: var(--bw) solid var(--line); background: var(--bg); color: var(--text); box-shadow: var(--raise-sm); cursor: pointer; font-weight: 600; min-height: 2.5rem; }
 .btn:hover { color: var(--accent-ink); }
-.btn:active, .btn.pressed { box-shadow: var(--inset-sm); }
+.btn:active, .btn.pressed, .btn[aria-pressed="true"] { box-shadow: var(--inset-sm); color: var(--accent-ink); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .btn.primary:hover { color: var(--on-accent); filter: brightness(1.06); }
@@ -494,16 +494,50 @@ table.code th { text-align: center; }
   .history { max-height: 55vh; }
 }
 @media (max-width: 640px) {
-  .stage { padding: .7rem; }
-  .topbar { padding: .55rem .7rem; }
-  .tab span.tt { display: none; }
-  .tab { padding: .5rem .65rem; }
   .keys { gap: .4rem; }
   .ptable { gap: 2px; }
   .pt-cell .nm { display: none; }
   .viewbox { grid-template-columns: repeat(2, 1fr); }
   .kv.big { grid-column: auto; }
 }
+/* ------------------------------------------------------------------ phone layout (also used inside the Tauri apps)
+   A compact top bar, the workspace tabs as a bottom bar (reachable with a thumb), safe-area insets for notches and home indicators,
+   operation lists as one scrolling row, and the calculator input docked above the tab bar. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+button, .tab, .opbtn, .chip { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+@media (max-width: 640px) {
+  .app { min-height: 100vh; min-height: 100dvh; }
+  .topbar { flex-wrap: nowrap; gap: .4rem; padding: calc(.45rem + env(safe-area-inset-top)) calc(.7rem + env(safe-area-inset-right)) .45rem calc(.7rem + env(safe-area-inset-left)); }
+  .brand { margin-right: 0; font-size: 1.05rem; gap: .4rem; }
+  .brand small { display: none; }
+  .brand .icon.asset { width: 1.6rem; height: 1.6rem; }
+  .top-actions { min-width: 0; gap: .35rem; }
+  .session-chip { max-width: 34vw; padding: .4rem .6rem; }
+  .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; flex: none; flex-wrap: nowrap; overflow-x: auto; gap: .2rem; scrollbar-width: none;
+          padding: .35rem calc(.4rem + env(safe-area-inset-right)) calc(.35rem + env(safe-area-inset-bottom)) calc(.4rem + env(safe-area-inset-left));
+          background: var(--bg); border-top: var(--bw) solid var(--line); box-shadow: 0 -6px 14px -8px var(--sh-d); scroll-snap-type: x proximity; overscroll-behavior-x: contain; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: 0 0 auto; flex-direction: column; justify-content: center; gap: .1rem; min-width: 4.3rem; min-height: 3rem; padding: .3rem .45rem; border-radius: 12px; box-shadow: none; border-color: transparent; font-size: .68rem; font-weight: 600; scroll-snap-align: center; }
+  .tab span.tt { display: block; white-space: nowrap; }
+  .tab[aria-selected="true"] { box-shadow: var(--inset-sm); }
+  .stage { padding: .7rem calc(.7rem + env(safe-area-inset-right)) calc(5rem + env(safe-area-inset-bottom)) calc(.7rem + env(safe-area-inset-left)); }
+  .statusbar { display: none; }
+  input, select, textarea { font-size: 16px; }                    /* below 16px iOS zooms the page when a field is focused */
+  .iconbtn { width: 2.5rem; height: 2.5rem; }
+  .btn, .chip { min-height: 2.5rem; }
+  .oplist { display: flex; position: static; overflow-x: auto; gap: .4rem; padding: .1rem .1rem .45rem; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .oplist::-webkit-scrollbar { display: none; }
+  .opbtn { flex: 0 0 auto; padding: .5rem .85rem; border-radius: 99px; white-space: nowrap; }
+  .opbtn small { display: none; }
+  .setbar { flex-wrap: nowrap; overflow-x: auto; gap: .6rem .9rem; scrollbar-width: none; padding-bottom: .2rem; }
+  .setbar .group { flex: none; }
+  .composer { position: sticky; bottom: calc(4.6rem + env(safe-area-inset-bottom)); z-index: 6; }
+  .composer .hints, .composer .examples { display: none; }
+  .plot-tools { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .plot-tools > * { flex: none; }
+  dialog.dialog { max-height: 92vh; max-height: 92dvh; }
+}
+
 @media print {
   .topbar, .statusbar, .keypad-panel, .toasts { display: none !important; }
   body { background: #fff; color: #000; }

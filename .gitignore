@@ -218,3 +218,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# SciCal desktop and phone apps
+node_modules/
+.build-*/
+src-tauri/target/
+# made by `tauri android init` / `tauri ios init` and the patch scripts; recreate with the steps in docs/MOBILE_AND_DESKTOP.md
+src-tauri/gen/
+# the frozen desktop engine made by tools/build_engine.py
+src-tauri/engine/*
+!src-tauri/engine/.gitkeep

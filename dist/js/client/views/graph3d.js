@@ -3,7 +3,9 @@
 import { formatNumber, formatTick, paletteColor, ticks } from '../../core/graphmath.js';
 import { contextFor, newEntryId } from '../../core/session.js';
 import { DEFAULT_CAMERA, clampCamera, cloneCamera, colormap, hexToRgb, makeProjector, normalizer, orbit, panBy, rgbCss, shade, zoomBy, } from '../../core/scene3d.js';
+import { releaseVelocity } from '../../core/motion.js';
 import { clamp, debounce, isRecord, splitPairs } from '../../core/util.js';
+import { CameraMotion, reducedMotion } from '../motion.js';
 import { ApiError, api } from '../api.js';
 import { h, replace } from '../dom.js';
 import { store } from '../store.js';
@@ -52,6 +54,7 @@ export function createGraph3DView() {
     let inflight = null;
     let renderSeq = 0;
     let dragging = false;
+    let animating = false;
     let hoverPt = null;
     let pinned = null;
     let lastPreps = [];
@@ -144,7 +147,7 @@ export function createGraph3DView() {
         view3d: { camera: cloneCamera(cam), options: { ...opts }, sliders: params.map((p) => ({ ...p })), zwindow: { zmin: domain.zmin, zmax: domain.zmax } },
     });
     // ------------------------------------------------------------------------------------------------ requests
-    const requestRender = async () => {
+    const requestRender = async (quiet = false) => {
         const seq = ++renderSeq;
         inflight?.abort();
         if (!layers.some(hasContent)) {
@@ -156,8 +159,10 @@ export function createGraph3DView() {
         }
         const ctl = new AbortController();
         inflight = ctl;
-        note.hidden = false;
-        note.textContent = 'Computing…';
+        if (!quiet) {
+            note.hidden = false;
+            note.textContent = 'Computing…';
+        } // a slider being played redraws many times a second: no flashing note
         try {
             const res = await api.graph('render3d', buildSpec(), store.settings, contextFor(store.entries, ''), ctl.signal);
             if (seq !== renderSeq)
@@ -229,9 +234,16 @@ export function createGraph3DView() {
         if (!ctx)
             return;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        const labels = paint(ctx, w, hgt, { ink: screenInk(), hover: true, fontPx: 12, fast: dragging });
+        const labels = paint(ctx, w, hgt, { ink: screenInk(), hover: true, fontPx: 12, fast: dragging || animating });
         canvas.setAttribute('aria-label', labels.length ? `3D graph of ${labels.join('; ')}. Drag to rotate, shift-drag to move, scroll to zoom, arrow keys rotate, plus and minus zoom, 0 resets the view.` : 'Empty 3D graph. Enter a formula on the left.');
     };
+    const motion = new CameraMotion({
+        get: () => cam,
+        set: (c) => { cam = c; },
+        redraw: (moving) => { animating = moving; draw(); if (!moving)
+            paintViewControls(); },
+        alive: () => el.isConnected,
+    });
     let queued = false;
     const queueDraw = () => { if (queued)
         return; queued = true; requestAnimationFrame(() => { queued = false; draw(); }); };
@@ -620,6 +632,7 @@ export function createGraph3DView() {
         return best;
     };
     const pointers = new Map();
+    let samples3 = []; // recent drag positions, for the momentum of a flick
     let moved = 0;
     let panMode = false;
     let pinch = 0;
@@ -627,6 +640,8 @@ export function createGraph3DView() {
     canvas.addEventListener('pointerdown', (ev) => {
         canvas.setPointerCapture(ev.pointerId);
         pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+        motion.interrupt();
+        samples3 = [];
         moved = 0;
         panMode = ev.button === 2 || ev.button === 1 || ev.shiftKey;
         pinch = 0;
@@ -651,6 +666,11 @@ export function createGraph3DView() {
         const dy = ev.clientY - prev.y;
         moved += Math.abs(dx) + Math.abs(dy);
         pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+        if (pointers.size === 1) {
+            samples3.push({ t: performance.now(), x: ev.clientX, y: ev.clientY });
+            if (samples3.length > 12)
+                samples3.shift();
+        }
         dragging = true;
         hoverPt = null;
         readout.hidden = true;
@@ -684,6 +704,11 @@ export function createGraph3DView() {
             }
             if (wasDrag || moved < 5)
                 queueDraw();
+            if (wasDrag && !panMode && ev.type === 'pointerup') {
+                const r = rectOf();
+                motion.fling(releaseVelocity(samples3, Math.min(r.width, r.height), performance.now())); // a flick keeps turning, then settles
+            }
+            motion.resume();
         }
     };
     canvas.addEventListener('pointerup', endPointer);
@@ -693,12 +718,13 @@ export function createGraph3DView() {
         readout.hidden = true;
         queueDraw();
     } });
-    canvas.addEventListener('wheel', (ev) => { ev.preventDefault(); cam = zoomBy(cam, ev.deltaY < 0 ? 1.12 : 1 / 1.12); queueDraw(); }, { passive: false });
-    canvas.addEventListener('dblclick', () => { cam = cloneCamera(DEFAULT_CAMERA); queueDraw(); });
+    canvas.addEventListener('wheel', (ev) => { ev.preventDefault(); motion.interrupt(); cam = zoomBy(cam, ev.deltaY < 0 ? 1.12 : 1 / 1.12); queueDraw(); }, { passive: false });
+    canvas.addEventListener('dblclick', () => motion.animateTo(cloneCamera(DEFAULT_CAMERA)));
     canvas.addEventListener('keydown', (ev) => {
         const size = Math.min(canvas.clientWidth, canvas.clientHeight);
         const step = ev.shiftKey ? 60 : 22;
         let handled = true;
+        motion.interrupt();
         if (ev.key === 'ArrowLeft')
             cam = orbit(cam, -step, 0, size);
         else if (ev.key === 'ArrowRight')
@@ -711,8 +737,12 @@ export function createGraph3DView() {
             cam = zoomBy(cam, 1.2);
         else if (ev.key === '-' || ev.key === '_')
             cam = zoomBy(cam, 1 / 1.2);
-        else if (ev.key === '0')
-            cam = cloneCamera(DEFAULT_CAMERA);
+        else if (ev.key === '0') {
+            motion.animateTo(cloneCamera(DEFAULT_CAMERA));
+            handled = true;
+            ev.preventDefault();
+            return;
+        }
         else
             handled = false;
         if (handled) {
@@ -808,6 +838,7 @@ export function createGraph3DView() {
         change: () => scheduleRender(),
         remove: (p) => { params = params.filter((x) => x !== p); dismissed.add(p.name); paintSliders(); scheduleRender(); },
         repaint: () => paintSliders(),
+        immediate: () => requestRender(true),
     });
     // ------------------------------------------------------------------------------------------------ domain and view controls
     const paintDomain = () => {
@@ -822,7 +853,18 @@ export function createGraph3DView() {
         domainInputs[k].addEventListener('input', () => { domain[k] = domainInputs[k].value; scheduleRender(); });
     }
     samplesRange.addEventListener('input', () => { samples = Number(samplesRange.value); paintDomain(); scheduleRender(); });
-    const setCamera = (patch) => { cam = clampCamera({ ...cam, ...patch }); draw(); };
+    const spinBtn = h('button', { class: 'btn small', type: 'button', text: 'Spin', 'aria-pressed': 'false', title: 'Turn the scene slowly about the vertical axis' });
+    spinBtn.addEventListener('click', () => {
+        const want = !motion.isSpinning;
+        if (want && !motion.setSpin(true)) {
+            toast(reducedMotion() ? 'Animation is switched off (reduce motion).' : 'The scene cannot spin now.', 'info');
+            return;
+        }
+        if (!want)
+            motion.setSpin(false);
+    });
+    motion.onChange = () => { spinBtn.setAttribute('aria-pressed', String(motion.isSpinning)); spinBtn.classList.toggle('on', motion.isSpinning); };
+    const setCamera = (patch) => { motion.animateTo(clampCamera({ ...cam, ...patch })); };
     const projSel = h('select', { 'aria-label': 'Projection' }, h('option', { value: 'perspective', text: 'Perspective' }), h('option', { value: 'orthographic', text: 'Orthographic' }));
     projSel.addEventListener('change', () => setCamera({ projection: projSel.value }));
     const aspectSel = h('select', { 'aria-label': 'Proportions of the plot box' }, h('option', { value: 'auto', text: 'Proportions: automatic' }), h('option', { value: 'box', text: 'Fit to box' }), h('option', { value: 'equal', text: 'Equal scale on all axes' }));
@@ -991,7 +1033,7 @@ export function createGraph3DView() {
                 const t = s.value;
                 addLayer({ type: t, ...(t === 'curve3d' || t === 'points3d' ? { colorBy: 'solid' } : {}) });
                 paintLayers();
-            } s.value = ''; } } }, h('option', { value: '', text: 'More…' }), LAYER_TYPES.slice(1).map(([v, t]) => h('option', { value: v, text: t }))))), layersBox), h('section', { class: 'card', 'aria-label': 'Domain and sampling' }, h('div', { class: 'card-head' }, h('h3', { text: 'Domain and sampling' })), h('div', { class: 'domain-grid' }, field('x from', domainInputs.xmin), field('x to', domainInputs.xmax), field('y from', domainInputs.ymin), field('y to', domainInputs.ymax), field('z window from', domainInputs.zmin), field('z window to', domainInputs.zmax)), h('label', { class: 'field' }, h('span', { class: 'label', text: 'Samples per axis' }), samplesRange), samplesLabel, h('p', { class: 'muted', style: { 'font-size': '.8rem', margin: '0' }, text: 'Points where the formula is not a real number (a pole, a negative square root) are left out and show as gaps. The z window cuts off very tall parts; leave it empty for an automatic window.' })), h('section', { class: 'card', 'aria-label': 'Sliders' }, h('div', { class: 'card-head' }, h('h3', { text: 'Sliders' })), slidersBox), h('section', { class: 'card', 'aria-label': 'View' }, h('div', { class: 'card-head' }, h('h3', { text: 'View' })), h('div', { class: 'sub', style: { display: 'grid', 'grid-template-columns': '1fr 1fr', gap: '.45rem' } }, projSel, aspectSel), h('div', { class: 'row' }, toggle('Axes', 'axes'), toggle('Grid', 'grid'), toggle('Legend', 'legend')), h('div', { class: 'chips' }, VIEWS.map(([name, patch]) => h('button', { class: 'chip', type: 'button', text: name, on: { click: () => setCamera({ ...patch, panX: 0, panY: 0 }) } })))), h('section', { class: 'card', 'aria-label': 'Examples' }, h('div', { class: 'card-head' }, h('h3', { text: 'Examples' })), h('div', { class: 'chips' }, EXAMPLES.map((ex) => h('button', { class: 'chip', type: 'button', text: ex.title, on: { click: () => setExample(ex) } }))))), h('div', { class: 'graph-main', style: { display: 'grid', gap: '1rem', 'min-width': '0' } }, h('section', { class: 'card plot-card', 'aria-label': '3D plot' }, h('div', { class: 'plot-tools' }, iconButton('plus', 'Zoom in', () => { cam = zoomBy(cam, 1.25); draw(); }), h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Zoom out', title: 'Zoom out', on: { click: () => { cam = zoomBy(cam, 0.8); draw(); } } }, h('span', { text: '−', style: { 'font-size': '1.3rem' } })), h('button', { class: 'btn small', type: 'button', text: 'Reset view', on: { click: () => { cam = cloneCamera(DEFAULT_CAMERA); paintViewControls(); draw(); } } }), h('button', { class: 'btn small', type: 'button', text: 'Clear mark', on: { click: () => { pinned = null; draw(); } } }), h('span', { class: 'grow' }), h('button', { class: 'btn small', type: 'button', text: 'Save PNG', title: 'A picture with a transparent background', on: { click: () => void exportPng() } }), h('button', { class: 'btn small', type: 'button', text: 'Add to worksheet', on: { click: () => void saveToWorksheet() } })), exportRow, wrap, h('p', { class: 'muted', style: { margin: '0', 'font-size': '.82rem' }, text: 'Drag to rotate · shift-drag or right-drag to move · scroll or pinch to zoom · double-click to reset · click a point to mark it · arrow keys, + and − work when the plot is focused.' }), statsBox, live), savedList('Saved 3D graphs in this worksheet', (e) => e.kind === 'graph' && isRecord(e.spec) && e.spec.mode === '3d', (e) => { if (e.spec)
+            } s.value = ''; } } }, h('option', { value: '', text: 'More…' }), LAYER_TYPES.slice(1).map(([v, t]) => h('option', { value: v, text: t }))))), layersBox), h('section', { class: 'card', 'aria-label': 'Domain and sampling' }, h('div', { class: 'card-head' }, h('h3', { text: 'Domain and sampling' })), h('div', { class: 'domain-grid' }, field('x from', domainInputs.xmin), field('x to', domainInputs.xmax), field('y from', domainInputs.ymin), field('y to', domainInputs.ymax), field('z window from', domainInputs.zmin), field('z window to', domainInputs.zmax)), h('label', { class: 'field' }, h('span', { class: 'label', text: 'Samples per axis' }), samplesRange), samplesLabel, h('p', { class: 'muted', style: { 'font-size': '.8rem', margin: '0' }, text: 'Points where the formula is not a real number (a pole, a negative square root) are left out and show as gaps. The z window cuts off very tall parts; leave it empty for an automatic window.' })), h('section', { class: 'card', 'aria-label': 'Sliders' }, h('div', { class: 'card-head' }, h('h3', { text: 'Sliders' })), slidersBox), h('section', { class: 'card', 'aria-label': 'View' }, h('div', { class: 'card-head' }, h('h3', { text: 'View' })), h('div', { class: 'sub', style: { display: 'grid', 'grid-template-columns': '1fr 1fr', gap: '.45rem' } }, projSel, aspectSel), h('div', { class: 'row' }, toggle('Axes', 'axes'), toggle('Grid', 'grid'), toggle('Legend', 'legend')), h('div', { class: 'chips' }, VIEWS.map(([name, patch]) => h('button', { class: 'chip', type: 'button', text: name, on: { click: () => setCamera({ ...patch, panX: 0, panY: 0 }) } })))), h('section', { class: 'card', 'aria-label': 'Examples' }, h('div', { class: 'card-head' }, h('h3', { text: 'Examples' })), h('div', { class: 'chips' }, EXAMPLES.map((ex) => h('button', { class: 'chip', type: 'button', text: ex.title, on: { click: () => setExample(ex) } }))))), h('div', { class: 'graph-main', style: { display: 'grid', gap: '1rem', 'min-width': '0' } }, h('section', { class: 'card plot-card', 'aria-label': '3D plot' }, h('div', { class: 'plot-tools' }, iconButton('plus', 'Zoom in', () => { cam = zoomBy(cam, 1.25); draw(); }), h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Zoom out', title: 'Zoom out', on: { click: () => { cam = zoomBy(cam, 0.8); draw(); } } }, h('span', { text: '−', style: { 'font-size': '1.3rem' } })), h('button', { class: 'btn small', type: 'button', text: 'Reset view', on: { click: () => motion.animateTo(cloneCamera(DEFAULT_CAMERA)) } }), spinBtn, h('button', { class: 'btn small', type: 'button', text: 'Clear mark', on: { click: () => { pinned = null; draw(); } } }), h('span', { class: 'grow' }), h('button', { class: 'btn small', type: 'button', text: 'Save PNG', title: 'A picture with a transparent background', on: { click: () => void exportPng() } }), h('button', { class: 'btn small', type: 'button', text: 'Add to worksheet', on: { click: () => void saveToWorksheet() } })), exportRow, wrap, h('p', { class: 'muted', style: { margin: '0', 'font-size': '.82rem' }, text: 'Drag to rotate (a flick keeps turning) · shift-drag, right-drag or two fingers to move · scroll or pinch to zoom · double-click to reset · click a point to mark it · arrow keys, + and − work when the plot is focused.' }), statsBox, live), savedList('Saved 3D graphs in this worksheet', (e) => e.kind === 'graph' && isRecord(e.spec) && e.spec.mode === '3d', (e) => { if (e.spec)
         loadSpec(e.spec); })));
     const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => queueDraw()) : null;
     ro?.observe(wrap);

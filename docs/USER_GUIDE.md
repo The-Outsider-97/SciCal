@@ -41,15 +41,19 @@ Add layers (a function, a curve, data…). Each layer accepts what you would wri
 
 ![Titration](screenshots/chemistry-titration.png)
 
-Periodic table with isotopes · molar mass and percent composition · equation balancing (exact) · stoichiometry with limiting reagent and yield · empirical formula · solutions and dilutions · pH, buffers and titration curves · gas laws · thermochemistry · ICE equilibrium tables.
+![Atom model](screenshots/chemistry-atom.png)
+
+Periodic table with isotopes (opening an element shows a 3D atom: protons and neutrons as touching spheres in the nucleus with their totals, e.g. *26 p⁺ · 30 n⁰ · 26 e⁻ · Fe-56*, and each electron on its own orbit in its own plane; when no isotope is chosen it uses the most abundant natural isotope, or the longest-lived one, and says so) · molar mass and percent composition · equation balancing (exact) · stoichiometry with limiting reagent and yield · empirical formula · solutions and dilutions · pH, buffers and titration curves · gas laws · thermochemistry · ICE equilibrium tables.
 Choose an operation on the left, fill in the form (or press **Load example**), then **Calculate**. Results show the numbers, the working steps and any assumptions (for example *25 °C, activity coefficients ignored*).
 Charges on ions must be written unambiguously: `Cu^2+`, `NH4^+`. A bare `Cu2+` is refused with a hint, because it could mean two copper atoms.
 
 ## Biology
 
-DNA/RNA sequence statistics, translation, open reading frames, restriction sites, protein properties, Hardy–Weinberg, Punnett squares, population growth, enzyme kinetics (Michaelis–Menten fit), colony counts and OD, and the standard genetic code.
+DNA/RNA sequence statistics, translation, open reading frames, restriction sites, protein properties, Hardy–Weinberg, Punnett squares, population growth, enzyme kinetics (Michaelis–Menten fit), colony counts and OD, and the standard genetic code. DNA and RNA are drawn as a double helix: two purple sugar–phosphate backbones joined by cylinder bases (A yellow, T pink, U brown, C blue, G green); *Play* turns it slowly, and the transcription and translation scenes step through the process.
 
 ![Punnett square](screenshots/biology-punnett.png)
+
+![DNA double helix](screenshots/biology-dna.png)
 
 ## Measurement
 
@@ -108,6 +112,7 @@ Click the worksheet name to create, open, rename, delete, import and export work
 Graphing has a **2D | 3D** switch. In 3D, each layer is one of: a surface `z = f(x, y)` (type `sin(x)*cos(y)` or `z = x^2 - y^2`), a parametric surface `(x(u, v), y(u, v), z(u, v))`, a space curve `(x(t), y(t), z(t))`, or a set of points `x y z` (one per line).
 
 * **Move:** drag to rotate, shift-drag or right-drag to move, scroll or pinch to zoom, double-click to reset; arrow keys, `+`, `-` and `0` work when the plot has focus. Click a point to mark it and read its coordinates.
+* **Motion:** the view presets and *Reset view* glide to the new view instead of jumping; a quick flick keeps turning and slows to a stop (touch the scene to stop it at once); **Spin** turns the scene slowly about the vertical axis until you switch it off. On a slider, **Play** sweeps it back and forth from where it is, so you can watch a family of surfaces change; **Pause** stops it. With *Reduce motion* on (Settings, or your system's setting) none of this animates: views change at once, Spin and Play are off.
 * **Layers:** colour, opacity, wireframe, and colour by height; a letter that has no value (the `a` in `a*sin(x)*cos(y)`) becomes a slider.
 * **Domain and sampling:** x and y ranges, up to 160 samples per axis, and an optional z window that cuts off very tall parts. Where a formula is not a real number (a pole, the square root of a negative) the surface is left open: it is shown as a gap and never bridged.
 * **View:** perspective or orthographic, proportions (automatic keeps a sphere round; *fit to box* stretches; *equal scale*), axes, grid, legend, and Isometric/Top/Front/Side presets.
@@ -148,6 +153,8 @@ The sparkle button shows which SLAI agents SciCal can reach. **Explain** on any 
 
 ## Phone and narrow windows
 
-The layout adapts; the keypad moves under the input.
+On a narrow screen the workspace tabs become a **bar at the bottom** (with labels), the operation list is one row you can swipe, the input sits just above the bar, and the page respects the notch and home indicator. Text fields are large enough that iPhones do not zoom in when you tap them. The keypad moves under the input.
+
+SciCal also runs as a Windows program and as Android and iOS apps; see [MOBILE_AND_DESKTOP.md](MOBILE_AND_DESKTOP.md).
 
 ![Mobile](screenshots/mobile-math.png)

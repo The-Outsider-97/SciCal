@@ -23,9 +23,11 @@ const EXAMPLES: Array<{ text: string; settings?: Partial<Settings> }> = [
 
 export interface MathView { el: HTMLElement; focus(): void; open(req: NavRequest): void; run(text: string, settings?: Partial<Settings>): Promise<void>; setInput(text: string): void }
 
+const narrowScreen = (): boolean => typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches;
+
 export function createMathView(): MathView {
   const history = h('div', { class: 'history', role: 'log', 'aria-live': 'polite', 'aria-label': 'Calculation history', tabindex: '0' });
-  const input = h('textarea', { rows: '1', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', 'aria-label': 'Expression to calculate', placeholder: 'Type an expression, e.g. diff(sin(x)*x, x), then press Enter' });
+  const input = h('textarea', { rows: '1', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', 'aria-label': 'Expression to calculate', placeholder: narrowScreen() ? 'Type an expression' : 'Type an expression, e.g. diff(sin(x)*x, x), then press Enter' });
   const runBtn = h('button', { class: 'btn primary', type: 'button', text: 'Calculate' });
   const status = h('div', { class: 'hints', 'aria-live': 'polite' });
   const shown = new Map<string, Shown>();

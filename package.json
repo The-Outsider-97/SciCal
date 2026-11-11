@@ -9,11 +9,16 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsx --test tests_ts/*.test.ts",
     "test:py": "python3 -m unittest discover -s tests -v",
-    "start": "npm run build && python3 -m scical"
+    "start": "npm run build && python3 -m scical",
+    "engine": "python tools/build_engine.py",
+    "tauri": "tauri",
+    "app:dev": "npm run build && tauri dev",
+    "app:build:windows": "npm run build && python tools/build_engine.py && tauri build"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "@tauri-apps/cli": "^2.0.0"
   }
 }

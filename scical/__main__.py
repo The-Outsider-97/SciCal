@@ -26,6 +26,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--no-browser", action="store_true", help="do not open a browser window")
     p.add_argument("--token", help="fixed access token (for tests; random by default)")
     p.add_argument("--client-dir", help="folder with the built web client")
+    p.add_argument("--worker-mode", choices=("auto", "process", "thread"), default=None, help="run calculations in worker processes, in threads (iOS, Android) or choose automatically")
+    p.add_argument("--port-fallback", action="store_true", help="if --port is taken, listen on any free port instead")
+    p.add_argument("--ready-line", action="store_true", help="print one machine-readable line, SCICAL_READY {json}, when the server is listening (used by the desktop app)")
+    p.add_argument("--exit-on-stdin-close", action="store_true", help="stop when standard input closes, so the engine ends with the app that started it")
     p.add_argument("--version", action="version", version=f"{APP_NAME} {__version__}")
     args = p.parse_args(argv)
     if args.host not in ("127.0.0.1", "localhost", "::1"):
@@ -48,6 +52,8 @@ def main(argv: list[str] | None = None) -> int:
         s.workers = max(1, min(16, args.workers))
     if args.timeout:
         s.task_timeout_s = max(1.0, min(600.0, args.timeout))
+    if args.worker_mode:
+        s.worker_mode = args.worker_mode
     s.open_browser = not args.no_browser
 
     client = Path(args.client_dir).expanduser().resolve() if args.client_dir else Path(__file__).resolve().parent.parent / "dist"
@@ -60,14 +66,25 @@ def main(argv: list[str] | None = None) -> int:
     try:
         server = SciCalHTTPServer(app, client)
     except OSError as exc:
-        print(f"Cannot listen on {s.host}:{s.port}: {exc}. Try --port.", file=sys.stderr)
-        app.close()
-        return 2
+        server = None
+        if args.port_fallback and s.port != 0:
+            s.port = 0
+            try:
+                server = SciCalHTTPServer(app, client)
+            except OSError as exc2:
+                exc = exc2
+        if server is None:
+            print(f"Cannot listen on {s.host}:{s.port}: {exc}. Try --port.", file=sys.stderr)
+            app.close()
+            return 2
     url = f"{server.base_url}/?token={s.token}"
     print(f"{APP_NAME} {__version__}\n  SLAI root : {s.slai_root or 'not found (SLDC export unavailable)'}\n  Data      : {s.data_dir}\n  Exports   : {s.output_dir}\n"
           f"  Icons     : {s.assets_dir}\n  Open      : {url}", flush=True)
     for note in app.startup_notes:
         print(f"  notice    : {note}", flush=True)
+    if args.ready_line:
+        import json
+        print("SCICAL_READY " + json.dumps({"port": server.port, "token": s.token, "url": url, "version": __version__}), flush=True)
     if s.open_browser:
         threading.Timer(0.4, lambda: webbrowser.open(url)).start()
     import signal
@@ -81,6 +98,15 @@ def main(argv: list[str] | None = None) -> int:
                 signal.signal(getattr(signal, name), stop)
             except (ValueError, OSError):
                 pass
+    if args.exit_on_stdin_close:
+        def watch_parent() -> None:
+            try:
+                while sys.stdin.buffer.read(4096):
+                    pass
+            except Exception:  # noqa: BLE001
+                pass
+            stop()
+        threading.Thread(target=watch_parent, name="scical-parent-watch", daemon=True).start()
     try:
         server.serve_forever(poll_interval=0.25)
     except KeyboardInterrupt:
@@ -92,4 +118,6 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    import multiprocessing
+    multiprocessing.freeze_support()          # a frozen (PyInstaller) build starts its calculation workers through this
     raise SystemExit(main())

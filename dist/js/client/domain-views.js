@@ -6,6 +6,7 @@ import { h, replace, s } from './dom.js';
 import { math } from './math-dom.js';
 import { cellText } from './domain-results.js';
 import { dialog } from './ui.js';
+import { referenceIsotope } from '../core/isotopes.js';
 import { atomScene, nucleusScene, orbitalAngularScene, scientificScene, nucleotideColor } from './science3d.js';
 const rows = (v) => (Array.isArray(v) ? v.filter(isRecord) : []);
 const str = (v) => (typeof v === 'string' ? v : v === null || v === undefined ? '' : String(v));
@@ -70,7 +71,9 @@ export function elementDialog(res) {
     const iso = rows(e.isotopes);
     const body = h('div', { style: { display: 'grid', gap: '.9rem' } }, h('div', { class: 'kvs' }, facts.filter(([, v]) => v).map(([k, v]) => h('div', { class: 'kv' }, h('div', { class: 'k', text: k }), h('div', { class: 'v', text: v })))), str(e.configurationNote) ? h('p', { class: 'muted', text: str(e.configurationNote) }) : null, str(e.weightNote) ? h('p', { class: 'muted', text: str(e.weightNote) }) : null, iso.length ? h('div', null, h('div', { class: 'sectitle', text: 'Isotopes' }), simpleTable(iso)) : h('p', { class: 'muted', text: 'No isotope data is stored for this element.' }));
     const sceneHost = h('div');
-    const isotope = h('select', { 'aria-label': 'Isotope' }, iso.length ? iso.map((item) => h('option', { value: String(item.A), text: String(e.symbol) + '-' + String(item.A) })) : h('option', { value: '', text: 'No validated isotope data in SciCal' }));
+    const reference = referenceIsotope(Number(e.z)); // an element with no stored isotopes is shown with a labelled reference isotope
+    const isotope = h('select', { 'aria-label': 'Isotope' }, iso.length ? iso.map((item) => h('option', { value: String(item.A), text: String(e.symbol) + '-' + String(item.A) })) :
+        reference ? h('option', { value: String(reference.a), text: String(e.symbol) + '-' + String(reference.a) + ' (reference)' }) : h('option', { value: '', text: 'No isotope data in SciCal' }));
     // A missing mass number must NOT be substituted with a rounded average atomic weight.
     isotope.disabled = iso.length === 0;
     const charge = h('input', { type: 'number', min: '-3', max: String(Math.min(3, Number(e.z))), step: '1', value: '0', 'aria-label': 'Net ionic charge' });
@@ -84,22 +87,23 @@ export function elementDialog(res) {
     const update = () => {
         current?.destroy();
         const z = Number(e.z);
-        const mass = iso.length ? Number(isotope.value) : null;
+        const mass = iso.length ? Number(isotope.value) : reference ? reference.a : null;
         const q = Math.trunc(Number(charge.value));
         if (!Number.isInteger(q) || q < -3 || q > Math.min(3, z)) {
             replace(sceneHost, h('p', { role: 'alert', text: 'Choose an integer charge between -3 and ' + Math.min(3, z) + '.' }));
             return;
         }
         dataLine.textContent = z + ' protons · ' + (mass === null ? 'neutrons unknown' : (mass - z) + ' neutrons') + ' · ' + (z - q) + ' electrons. ' +
+            (!iso.length && reference ? 'No isotope table is stored for this element, so the nucleus shows ' + String(e.symbol) + '-' + reference.a + ', its ' + reference.kind + ' (a reference choice for the picture, not a measurement). ' : '') +
             'Electron configuration shown in the details is the neutral ground state; ionic shell positions are illustrative.';
         orbitalField.hidden = mode.value !== 'orbital';
         if (mode.value === 'orbital' && z - q === 0) {
             replace(sceneHost, h('p', { role: 'alert', text: 'A fully ionized atom has no bound electrons to visualize.' }));
             return;
         }
-        const selectedScene = mode.value === 'nucleus' ? nucleusScene(z, mass, str(e.configuration)) :
+        const selectedScene = mode.value === 'nucleus' ? nucleusScene(z, mass, str(e.configuration), !iso.length && reference ? str(e.symbol) + '-' + reference.a : '') :
             mode.value === 'orbital' ? orbitalAngularScene(orbital.value) :
-                atomScene(z, mass, q, str(e.configuration));
+                atomScene(z, mass, q, str(e.configuration), !iso.length && reference ? str(e.symbol) + '-' + reference.a : '');
         current = scientificScene(selectedScene);
         replace(sceneHost, current.el);
     };

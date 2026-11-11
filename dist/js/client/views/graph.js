@@ -635,6 +635,7 @@ export function createGraphView() {
         change: () => scheduleRender(),
         remove: (p) => { params = params.filter((x) => x !== p); dismissedParams.add(p.name); paintSliders(); scheduleRender(); },
         repaint: () => paintSliders(),
+        immediate: () => requestRender(),
     });
     // ------------------------------------------------------------------------------------------------ analysis
     const analysisLayerSel = h('select', { 'aria-label': 'Layer to analyse' });

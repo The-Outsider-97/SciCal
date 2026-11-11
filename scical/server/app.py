@@ -16,7 +16,7 @@ from ..integrations.slai_link import SlaiLink, activate, find_slai_root
 from ..integrations.stem_bridge import StemBridge
 from ..services.fsutil import atomic_write_text
 from ..services.sessions import SessionStore
-from ..services.workers import Pool
+from ..services.workers import make_pool
 from .config import Settings
 
 PREF_SCHEMA: dict[str, tuple[type, Any]] = {
@@ -95,7 +95,7 @@ class SciCalApp:
         self.stem = StemBridge(self.link, settings.agents)
         self.store = SessionStore(settings.sessions_dir, settings.max_sessions, settings.max_entries, settings.max_session_bytes)
         self.prefs = Prefs(settings.prefs_path)
-        self.pool = Pool(settings.workers or None, settings.task_timeout_s).start()
+        self.pool = make_pool(settings.worker_mode, settings.workers or None, settings.task_timeout_s)
         self.startup_notes: list[str] = list(self.store.recovered)
         if self.prefs.recovered:
             self.startup_notes.append(self.prefs.recovered)

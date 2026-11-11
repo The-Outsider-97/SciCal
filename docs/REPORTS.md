@@ -36,7 +36,7 @@ SciCal follows the pattern of the other SLAI applications (Reader was the templa
 
 ## 3. Test results
 
-Latest full run (cloud, Python 3.13): Python 404 tests, 2 of which fail only where there is no SLAI checkout (SLDC export, HTTP 503; they also failed before the STEM work) and 2 skip without the live agent; TypeScript 57 / 57 and `tsc --noEmit` clean; browser 25 / 25 (11 + 14). The table below is the earlier, per-suite record.
+Latest full run (cloud, Python 3.13): Python 412 tests (62 skipped where there is no SLAI checkout, no live STEM agent or an older `jsonschema`); TypeScript 79 / 79 and `tsc --noEmit` clean; browser 38 / 38 (Chromium; includes motion, reduced motion and the phone layout). The table below is the earlier, per-suite record.
 
 | Suite | Where it ran | Result |
 | --- | --- | --- |
@@ -100,4 +100,6 @@ Not verified: an agent actually writing an explanation, the Reader actually open
 * SGEO/SDRW strict validation needs `jsonschema` 4 or newer; with an older one SLAI validates structurally only and the dialog names the mode it used.
 * No computer-algebra-style assumptions system (`assume(x>0)`).
 * The browser tests ran on Chromium only.
+* **Apps (Tauri 2).** The Windows, Android and iOS apps are written but were **not built or run** where this was developed (no crates.io, Android SDK or Mac available). What is tested is the engine in thread mode, the embedded server, the desktop launcher protocol and the phone layout in a browser; see [MOBILE_AND_DESKTOP.md](MOBILE_AND_DESKTOP.md) for the full list and the differences on phones (thread-based calculations with no hard kill or memory cap, no SLAI agents, how files are saved).
+* Atom models use a labelled reference isotope when none is chosen (most abundant natural isotope, or the longest-lived one); this is a stated choice, not a measurement, and is never derived from the rounded atomic weight. Orbits are a teaching picture (one circle per electron), not electron clouds.
 * Screenshots in `docs/screenshots/` are real captures of the running application (1440×1300 for the desktop shots, 390×844 for mobile).

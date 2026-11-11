@@ -264,7 +264,7 @@ class ServerTests(unittest.TestCase):
             {"kind": "calc", "input": "plain", "ok": True, "result": {"ok": True, "value": {"text": "5"}}},
             {"kind": "note", "text": "A note"}]})
         status, _, data = self.raw("POST", "/api/export", {"sessionId": sid, "format": "sldc"}, {"Cookie": self.cookie, **MARK})
-        if status == 422:
+        if status in (422, 503):                      # DependencyMissing: no SLAI checkout to write SLDC with
             self.skipTest("the SLAI checkout (src/utils/sldc.py) was not found")
         self.assertEqual(status, 200)
         z = zipfile.ZipFile(io.BytesIO(data))
@@ -307,7 +307,7 @@ class ServerTests(unittest.TestCase):
             {"kind": "graph", "workspace": "graph", "title": "Older graph", "spec": spec, "summary": {"ok": True, "headline": "Graph of x"}, "ok": True}]})
         self.assertEqual(status, 200)
         status, _, data = self.raw("POST", "/api/export", {"sessionId": sid, "format": "sldc"}, {"Cookie": self.cookie, **MARK})
-        if status == 422:
+        if status in (422, 503):                      # DependencyMissing: no SLAI checkout to write SLDC with
             self.skipTest("the SLAI checkout (src/utils/sldc.py) was not found")
         self.assertEqual(status, 200)
         z = zipfile.ZipFile(io.BytesIO(data))

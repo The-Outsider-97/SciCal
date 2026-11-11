@@ -14,9 +14,10 @@ const EXAMPLES = [
     { text: '1/3 + 1/6' }, { text: 'sqrt(50)' }, { text: 'diff(sin(x)*x, x)' }, { text: 'integral(x^2, x, 0, 3)' }, { text: 'solve(x^2 - 5*x + 6 = 0)' },
     { text: '[[1,2],[3,4]]^-1' }, { text: '12 in -> cm', settings: { units: true } }, { text: 'normalprob(-1.96, 1.96, 0, 1)' },
 ];
+const narrowScreen = () => typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches;
 export function createMathView() {
     const history = h('div', { class: 'history', role: 'log', 'aria-live': 'polite', 'aria-label': 'Calculation history', tabindex: '0' });
-    const input = h('textarea', { rows: '1', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', 'aria-label': 'Expression to calculate', placeholder: 'Type an expression, e.g. diff(sin(x)*x, x), then press Enter' });
+    const input = h('textarea', { rows: '1', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', 'aria-label': 'Expression to calculate', placeholder: narrowScreen() ? 'Type an expression' : 'Type an expression, e.g. diff(sin(x)*x, x), then press Enter' });
     const runBtn = h('button', { class: 'btn primary', type: 'button', text: 'Calculate' });
     const status = h('div', { class: 'hints', 'aria-live': 'polite' });
     const shown = new Map();

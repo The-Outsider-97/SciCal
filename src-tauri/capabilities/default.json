@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The SciCal window shows the engine's own page, which never calls Tauri, so it is granted nothing. Only the local splash page is covered (and it needs nothing either).",
+  "windows": ["main"],
+  "permissions": []
+}
