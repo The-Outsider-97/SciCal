@@ -300,6 +300,18 @@ class ScientificVisualizationContractTests(unittest.TestCase):
             self.assertEqual(totals, r["verification"][source])
         self.assertEqual(r["verification"]["atomsLeft"], r["verification"]["atomsRight"])
 
+    def test_rna_processing_keeps_selected_exons_only(self):
+        result = ok("biology", "rna_processing", sequence="AUGGAAUUUCCCUAA", exons="1-6,10-15")
+        self.assertEqual(result["matureMrna"], "AUGGAACCCUAA")
+        self.assertEqual(result["lengthBefore"], 15)
+        self.assertEqual(result["lengthAfter"], 12)
+        self.assertEqual(result["exons"], [{"start": 1, "end": 6, "length": 6},
+                                          {"start": 10, "end": 15, "length": 6}])
+        self.assertEqual(result["excludedRegions"], [{"start": 7, "end": 9, "length": 3}])
+        self.assertFalse(op("biology", "rna_processing", sequence="AUGGAAUUUCCCUAA", exons="1-8,7-15")["ok"])
+        self.assertFalse(op("biology", "rna_processing", sequence="AUGGAAUUUCCCUAA", exons="1-16")["ok"])
+        self.assertFalse(op("biology", "rna_processing", sequence="AUGGAAUUUCCCUAA", exons="a-b")["ok"])
+
     def test_mutation_substitution_and_frameshift(self):
         syn = ok("biology", "mutation", sequence="ATGGAATAA", mode="substitute", position=6, base="G", frame="1")
         self.assertEqual(syn["classification"], "synonymous")
