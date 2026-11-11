@@ -355,41 +355,120 @@ export function electronShells(config: string, electrons: number): number[] {
   }
   return shell;
 }
+/**
+ * Close-packed FCC lattice. Centre-to-centre nearest distance = 2r exactly, so schematic
+ * nucleons cannot interpenetrate. The finite cluster is centred by its geometric centroid.
+ * The lattice is NOT a wavefunction, measured nuclear distribution or shell-model solution.
+ */
+export const NUCLEON_RADIUS = .115;
+export const EDUCATIONAL_ELECTRON_RADIUS = .055 * .8; // requested 20% reduction
+const nucleusCache = new Map<number, V3[]>();
+export function packedNucleus(count: number, radius = NUCLEON_RADIUS): V3[] {
+  if (!Number.isInteger(count) || count < 0 || count > 400) throw new RangeError('Nuclear visualization supports 0–400 nucleons');
+  if (count === 0) return [];
+  if (count === 1) return [[0, 0, 0]];
+  const existing = nucleusCache.get(count);
+  if (existing && radius === NUCLEON_RADIUS) return existing;
+  const half = Math.max(3, Math.ceil(Math.cbrt(count) * 1.65));
+  const candidates: Array<{ x: number; y: number; z: number; norm: number }> = [];
+  for (let x = -half; x <= half; x++)
+    for (let y = -half; y <= half; y++)
+      for (let z = -half; z <= half; z++)
+        if (Math.abs(x + y + z) % 2 === 0)
+          candidates.push({ x, y, z, norm: x * x + y * y + z * z });
+  candidates.sort((a, b) => a.norm - b.norm || a.z - b.z || a.y - b.y || a.x - b.x);
+  const selected = candidates.slice(0, count);
+  const scale = radius * Math.SQRT2;
+  const centroid = [
+    selected.reduce((sum, p) => sum + p.x, 0) / count,
+    selected.reduce((sum, p) => sum + p.y, 0) / count,
+    selected.reduce((sum, p) => sum + p.z, 0) / count,
+  ];
+  const positions = selected.map((p): V3 => [
+    (p.x - centroid[0]) * scale,
+    (p.y - centroid[1]) * scale,
+    (p.z - centroid[2]) * scale,
+  ]);
+  if (radius === NUCLEON_RADIUS) nucleusCache.set(count, positions);
+  return positions;
+}
+const norm3 = (p: V3): number => Math.hypot(p[0], p[1], p[2]);
+const add3 = (a: V3, b: V3): V3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const multiply3 = (p: V3, scale: number): V3 => [p[0] * scale, p[1] * scale, p[2] * scale];
+const cross3 = (a: V3, b: V3): V3 => [
+  a[1] * b[2] - a[2] * b[1],
+  a[2] * b[0] - a[0] * b[2],
+  a[0] * b[1] - a[1] * b[0],
+];
+const unit3 = (p: V3): V3 => multiply3(p, 1 / Math.max(1e-12, norm3(p)));
+export function nucleusParticles(z: number, mass: number | null): SciencePrimitive[] {
+  const total = mass ?? z; // missing isotope is *never* replaced by rounded atomic weight
+  const positions = packedNucleus(total);
+  return positions.map((p, i) => {
+    const proton = mass === null || Math.floor((i + 1) * z / total) > Math.floor(i * z / total);
+    const serial = proton ? Math.floor((i + 1) * z / total) : i + 1 - Math.floor((i + 1) * z / total);
+    return { kind: 'ball', p, r: NUCLEON_RADIUS, color: proton ? '#d94b51' : '#8c959f',
+      label: proton ? 'p+' : 'n', id: (proton ? 'proton-' : 'neutron-') + serial, group: 'nucleus' };
+  });
+}
+export interface ElectronOrbit { shell: number; index: number; radius: number; phase: number; u: V3; v: V3; id: string }
+export function electronOrbits(shells: number[], nuclearEnvelope: number): ElectronOrbit[] {
+  const result: ElectronOrbit[] = [];
+  const base = Math.max(.70, nuclearEnvelope + .42);
+  let serial = 0;
+  const total = shells.reduce((sum, n) => sum + n, 0);
+  shells.forEach((count, shell) => {
+    for (let i = 0; i < count; i++) {
+      const azimuth = (serial + 1) * 2.399963229728653;
+      const inclination = Math.acos(1 - 2 * (serial + .5) / Math.max(1, total));
+      const normal: V3 = [Math.sin(inclination) * Math.cos(azimuth),
+        Math.sin(inclination) * Math.sin(azimuth), Math.cos(inclination)];
+      const reference: V3 = Math.abs(normal[2]) > .95 ? [0, 1, 0] : [0, 0, 1];
+      const u = unit3(cross3(normal, reference));
+      const v = unit3(cross3(normal, u));
+      result.push({ shell: shell + 1, index: i, radius: base + shell * .46 + i * .012,
+        phase: (i / Math.max(1, count)) * 2 * Math.PI + serial * .19, u, v,
+        id: 'electron-' + (serial + 1) });
+      serial++;
+    }
+  });
+  return result;
+}
 export function atomScene(z: number, mass: number | null, charge: number, configuration: string): SceneSpec {
   const eCount = z - charge;
   const shells = electronShells(configuration, eCount);
-  const nucleons = mass ?? z;
-  const countNote = mass === null ? 'Isotope not available: neutron count and full nucleus are unknown.' : z + ' protons, ' + (mass - z) + ' neutrons';
+  const core = nucleusParticles(z, mass);
+  const envelope = core.reduce((max, p) => p.kind === 'ball' ? Math.max(max, norm3(p.p) + p.r) : max, 0);
+  const orbits = electronOrbits(shells, envelope);
+  const maxOrbit = orbits.reduce((max, p) => Math.max(max, p.radius), envelope);
+  const countNote = mass === null ? 'Isotope not available: neutron count and complete nucleus are unknown.' :
+    z + ' protons, ' + (mass - z) + ' neutrons';
+  const paths: SciencePrimitive[] = [];
+  for (const o of orbits) {
+    const samples = 48;
+    let last: V3 = add3(multiply3(o.u, Math.cos(o.phase) * o.radius), multiply3(o.v, Math.sin(o.phase) * o.radius));
+    for (let j = 1; j <= samples; j++) {
+      const angle = o.phase + j * 2 * Math.PI / samples;
+      const next = add3(multiply3(o.u, Math.cos(angle) * o.radius), multiply3(o.v, Math.sin(angle) * o.radius));
+      paths.push({ kind: 'line', a: last, b: next, color: '#71889f', width: .9, group: o.id });
+      last = next;
+    }
+  }
   return {
-    description: 'Educational shell model, not a quantum-mechanical electron trajectory. ' + countNote + '. ' + eCount + ' electrons; ion shell placement is schematic.',
-    frames: 90, extent: 3,
+    description: 'Educational individualized electron paths, NOT quantum-mechanical trajectories. ' + countNote +
+      '. ' + eCount + ' electrons; ionic shell assignment is illustrative.',
+    frames: 90, extent: Math.max(2.35, maxOrbit + .4),
     at(frame) {
-      const parts: SciencePrimitive[] = [];
-      const n = Math.min(320, nucleons);
-      for (let i = 0; i < n; i++) {
-        const k = (i + .5) / n;
-        const a = 2.3999632297 * i;
-        const zz = 1 - 2 * k;
-        const rr = Math.sqrt(1 - zz * zz) * Math.cbrt(k);
-        const p = point(Math.cos(a) * rr * .48, Math.sin(a) * rr * .48, zz * Math.cbrt(k) * .48);
-        parts.push(ball(p, i < z ? '#d94b51' : '#8c959f', .09, i < z ? 'p+' : 'n'));
+      const parts: SciencePrimitive[] = [...paths, ...core];
+      for (const o of orbits) {
+        const angle = o.phase + frame / 90 * 2 * Math.PI * (.5 + o.shell * .08);
+        const p = add3(multiply3(o.u, Math.cos(angle) * o.radius), multiply3(o.v, Math.sin(angle) * o.radius));
+        parts.push({ kind: 'ball', p, color: '#287cce', r: EDUCATIONAL_ELECTRON_RADIUS,
+          label: 'e−', id: o.id, group: 'shell-' + o.shell });
       }
-      shells.forEach((electrons, shell) => {
-        if (!electrons) return;
-        const rad = .67 + shell * .32;
-        const ring = Array.from({ length: 65 }, (_, i) => {
-          const t = i / 64 * 2 * Math.PI;
-          return point(rad * Math.cos(t), rad * Math.sin(t) * Math.cos(shell * .67), rad * Math.sin(t) * Math.sin(shell * .67));
-        });
-        for (let i = 1; i < ring.length; i++) parts.push(line(ring[i - 1], ring[i], '#77899b', 1));
-        for (let i = 0; i < electrons; i++) {
-          const t = (i / electrons + frame / 90) * 2 * Math.PI;
-          parts.push(ball(point(rad * Math.cos(t), rad * Math.sin(t) * Math.cos(shell * .67), rad * Math.sin(t) * Math.sin(shell * .67)), '#287cce', .055, 'e−'));
-        }
-      });
       return parts;
     },
-    frameLabel: (f) => 'Schematic shell phase ' + (f + 1) + '/90',
+    frameLabel: (f) => 'Schematic electron-path phase ' + (f + 1) + '/90',
   };
 }
 function basesPosition(i: number, size: number, strand = 1): V3 {
@@ -650,12 +729,11 @@ export function orbitalAngularScene(orbital: OrbitalShape): SceneSpec {
   };
 }
 export function nucleusScene(z: number, mass: number | null, configuration: string): SceneSpec {
-  const full = atomScene(z, mass, 0, configuration);
+  void configuration;
   return {
     description: 'Schematic nuclear composition. ' + (mass === null ? 'Neutron count is unavailable: only known protons shown.' :
       z + ' protons and ' + (mass - z) + ' neutrons. Spatial nucleon positions are not measured nuclear states.'),
     extent: 1.2,
-    at: () => full.at(0).filter((primitive) =>
-      primitive.kind === 'ball' && (primitive.color === '#d94b51' || primitive.color === '#8c959f')),
+    at: () => nucleusParticles(z, mass),
   };
 }
