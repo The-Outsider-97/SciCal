@@ -22,7 +22,7 @@ from .figures import clean_figure
 SCHEMA = "scical-session/1"
 ID = re.compile(r"^[0-9a-f]{16}$")
 ENTRY_KINDS = ("calc", "domain", "graph", "formula", "note")
-WORKSPACES = ("math", "chemistry", "biology", "measurement", "graph", "formula", "finance")
+WORKSPACES = ("math", "chemistry", "biology", "measurement", "graph", "formula", "finance", "stem")
 MAX_NAME = 120
 MAX_INPUT = 10_000
 MAX_RESULT_BYTES = 200_000
@@ -63,12 +63,12 @@ def clean_entry(e: Any, index: int) -> dict[str, Any]:
             if not isinstance(e[key], str) or len(e[key]) > MAX_INPUT:
                 raise BadRequest(f"Entry {index + 1}: '{key}' must be text of at most {MAX_INPUT} characters")
             out[key] = e[key]
-    for key in ("params", "spec", "settings", "result", "summary"):
+    for key in ("params", "spec", "settings", "result", "summary", "verification"):
         if key in e and e[key] is not None:
             if not isinstance(e[key], (dict, list)):
                 raise BadRequest(f"Entry {index + 1}: '{key}' must be an object")
             if len(json.dumps(e[key], ensure_ascii=False)) > MAX_RESULT_BYTES:
-                if key == "result":
+                if key in ("result", "verification"):
                     continue                                   # a huge result is recomputed on demand, not stored
                 raise LimitExceeded(f"Entry {index + 1}: '{key}' is too large")
             out[key] = e[key]

@@ -136,6 +136,11 @@ export class Api {
     assistProbe() { return this.data('POST', '/api/assist/probe', {}); }
     assistConsent(sessionId, allow) { return this.data('POST', '/api/assist/consent', { sessionId, allow }); }
     assistExplain(sessionId, entry) { return this.data('POST', '/api/assist/explain', { sessionId, entry }); }
+    stemStatus() { return this.data('GET', '/api/stem/status'); }
+    stemProbe() { return this.data('POST', '/api/stem/probe', {}); }
+    stemVerify(entry, settings, context) {
+        return this.data('POST', '/api/stem/verify', { entry, settings, context });
+    }
     assistCrosscheck(values) { return this.data('POST', '/api/assist/crosscheck', { values }); }
 }
 export const api = new Api();

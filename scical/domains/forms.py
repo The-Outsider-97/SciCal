@@ -140,6 +140,26 @@ BIOLOGY = [
     op("translate", "Translate", "Translate in any reading frame or on the reverse strand with the standard genetic code.",
        [SEQ, S("frame", "Frame", [("1", "1"), ("2", "2"), ("3", "3")]), S("strand", "Strand", [("+", "Forward (+)"), ("-", "Reverse (−)")]), B("toStop", "Stop at the first stop codon")],
        {"sequence": "ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG", "frame": "1", "strand": "+"}),
+    op("transcription", "Transcription simulator", "Transcribe an oriented DNA coding (5′→3′) or template (3′→5′) strand into mRNA, with a step-by-step schematic 3D view.",
+       [TA("sequence", "DNA sequence", placeholder="ATGGCC… (coding, 5′→3′)", required=True, mono=True, rows=5),
+        S("strand", "Input strand", [("coding", "Coding strand (5′→3′)"), ("template", "Template strand (3′→5′)")])],
+       {"sequence": "TACGGTATT", "strand": "template"}),
+    op("protein_synthesis", "Protein synthesis simulator", "Initiate at an AUG codon and translate until the first in-frame stop; inspect tRNA, amino acids and codons in a schematic 3D animation.",
+       [TA("sequence", "mRNA / coding DNA sequence (5′→3′)", placeholder="AUGCCAUAA", required=True, mono=True, rows=5),
+        N("start", "Start position (1-based, 0 = first AUG)", placeholder="0")],
+       {"sequence": "AUGCCAUAA", "start": 0}),
+    op("rna_processing", "RNA processing & splicing", "Create mature mRNA from user-selected, 1-based exon boundaries; no splice-site prediction or inferred capping.",
+       [TA("sequence", "Pre-mRNA (5′→3′ RNA)", placeholder="AUGGAAUUUCCCUAA", required=True, mono=True, rows=5),
+        T("exons", "Retained exon intervals (1-based inclusive)", placeholder="1-6,10-15", required=True,
+          hint="Unselected positions are removed from the resulting mature mRNA.")],
+       {"sequence": "AUGGAAUUUCCCUAA", "exons": "1-6,10-15"}),
+    op("mutation", "Mutation explorer", "Compare a substitution, one-base insertion, or deletion in a selected reading frame; classify the amino-acid consequence without inferring function.",
+       [TA("sequence", "DNA / RNA sequence (5′→3′)", placeholder="ATGGAATAA", required=True, mono=True, rows=5),
+        S("mode", "Edit", [("substitute", "Substitution"), ("insert", "Insertion"), ("delete", "Deletion")]),
+        N("position", "Nucleotide position (1-based)", required=True),
+        T("base", "Inserted or replacement nucleotide", when=w("substitute", "insert"), placeholder="G"),
+        S("frame", "Reading frame", [("1", "1"), ("2", "2"), ("3", "3")])],
+       {"sequence": "ATGGAATAA", "mode": "substitute", "position": 6, "base": "G", "frame": "1"}),
     op("orfs", "Open reading frames", "Find ORFs (ATG … stop) on both strands.",
        [SEQ, N("minLength", "Minimum length (amino acids)", placeholder="30"), B("bothStrands", "Search both strands", default=True)],
        {"sequence": "ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG", "minLength": 5, "bothStrands": True}),
@@ -250,4 +270,5 @@ CATALOGUE = {
 
 def catalogue() -> dict[str, Any]:
     from .finance.formdefs import FINANCE         # loaded on first use: it imports the finance package, which needs this module's helpers
-    return {**CATALOGUE, "finance": {"title": "Economics & Finance", "ops": FINANCE}}
+    from .stemdefs import STEM                    # likewise: it uses this module's helpers
+    return {**CATALOGUE, "finance": {"title": "Economics & Finance", "ops": FINANCE}, "stem": {"title": "STEM Lab", "ops": STEM}}

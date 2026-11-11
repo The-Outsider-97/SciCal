@@ -231,5 +231,112 @@ class ErrorsAreAnswersTests(unittest.TestCase):
                 self.assertTrue(r["error"]["message"])
 
 
+
+class ScientificVisualizationContractTests(unittest.TestCase):
+    """Check states independently of the renderer: no unverified science in a scene."""
+
+    def test_transcription_orientation_and_pairing(self):
+        coding = ok("biology", "transcription", sequence="ATGCCATAA", strand="coding")
+        template = ok("biology", "transcription", sequence="TACGGTATT", strand="template")
+        for result in (coding, template):
+            self.assertEqual(result["mrna"], "AUGCCAUAA")
+            self.assertEqual(result["coding"], "ATGCCATAA")
+            self.assertEqual(result["template"], "TACGGTATT")
+            self.assertEqual(result["orientation"], {"coding": "5to3", "template": "3to5", "mrna": "5to3"})
+        self.assertFalse(op("biology", "transcription", sequence="AUG", strand="template")["ok"])
+
+    def test_protein_synthesis_initiates_and_stops(self):
+        r = ok("biology", "protein_synthesis", sequence="AUGCCAUAA")
+        self.assertEqual(r["start"], 1)
+        self.assertEqual(r["protein"], "MP")
+        self.assertTrue(r["complete"])
+        self.assertEqual([x["codon"] for x in r["codons"]], ["AUG", "CCA", "UAA"])
+        self.assertEqual([x["anticodon"] for x in r["codons"]], ["UAC", "GGU", None])
+        self.assertEqual([x["aa"] for x in r["codons"]], ["M", "P", "*"])
+        self.assertEqual(r["frame"], 1)
+
+    def test_incomplete_or_invalid_translation_is_not_hidden(self):
+        self.assertFalse(op("biology", "protein_synthesis", sequence="CCCGGG")["ok"])
+        self.assertFalse(op("biology", "protein_synthesis", sequence="AUGCCAUAA", start=2)["ok"])
+        partial = ok("biology", "protein_synthesis", sequence="CCAUGGCU")
+        self.assertEqual(partial["start"], 3)
+        self.assertEqual(partial["protein"], "MA")
+        self.assertFalse(partial["complete"])
+        self.assertTrue(partial["warnings"])
+        self.assertFalse(op("biology", "protein_synthesis", sequence="AUG" * 301)["ok"])
+
+    def test_nist_reference_structures_and_unavailable_fallback(self):
+        expected = {"H2": 2, "O2": 2, "H2O": 3, "CO2": 3, "NH3": 4, "CH4": 5}
+        for formula, count in expected.items():
+            with self.subTest(formula):
+                result = ok("chemistry", "molar_mass", formula=formula)
+                structure = result["molecularStructure3d"]
+                self.assertEqual(structure["formula"], formula)
+                self.assertEqual(len(structure["atoms"]), count)
+                self.assertTrue(structure["source"].startswith("https://cccbdb.nist.gov/"))
+                self.assertTrue(structure["bonds"])
+                for bond in structure["bonds"]:
+                    a = structure["atoms"][bond["a"]]["xyz"]
+                    b = structure["atoms"][bond["b"]]["xyz"]
+                    length = math.dist(a, b)
+                    self.assertGreater(length, 0.5)
+                    self.assertLess(length, 2.0)
+        self.assertNotIn("molecularStructure3d", ok("chemistry", "molar_mass", formula="C2H6O"))
+        self.assertNotIn("molecularStructure3d", ok("chemistry", "molar_mass", formula="NaCl"))
+        equation = ok("chemistry", "balance", equation="H2 + O2 -> H2O")
+        self.assertTrue(all(entry["structure"] for entry in equation["atomInventory3d"]["reactants"]))
+        self.assertTrue(all(entry["structure"] for entry in equation["atomInventory3d"]["products"]))
+
+    def test_balance_scene_inherits_verified_composition(self):
+        r = ok("chemistry", "balance", equation="H2 + O2 -> H2O")
+        scene = r["atomInventory3d"]
+        self.assertTrue(scene["verified"])
+        self.assertEqual([x["coefficient"] for x in scene["reactants"]], [2, 1])
+        for side, source in (("reactants", "atomsLeft"), ("products", "atomsRight")):
+            totals = {}
+            for sp in scene[side]:
+                for element, amount in sp["atoms"].items():
+                    totals[element] = totals.get(element, 0) + amount * sp["coefficient"]
+            self.assertEqual(totals, r["verification"][source])
+        self.assertEqual(r["verification"]["atomsLeft"], r["verification"]["atomsRight"])
+
+    def test_rna_processing_keeps_selected_exons_only(self):
+        result = ok("biology", "rna_processing", sequence="AUGGAAUUUCCCUAA", exons="1-6,10-15")
+        self.assertEqual(result["matureMrna"], "AUGGAACCCUAA")
+        self.assertEqual(result["lengthBefore"], 15)
+        self.assertEqual(result["lengthAfter"], 12)
+        self.assertEqual(result["exons"], [{"start": 1, "end": 6, "length": 6},
+                                          {"start": 10, "end": 15, "length": 6}])
+        self.assertEqual(result["excludedRegions"], [{"start": 7, "end": 9, "length": 3}])
+        self.assertFalse(op("biology", "rna_processing", sequence="AUGGAAUUUCCCUAA", exons="1-8,7-15")["ok"])
+        self.assertFalse(op("biology", "rna_processing", sequence="AUGGAAUUUCCCUAA", exons="1-16")["ok"])
+        self.assertFalse(op("biology", "rna_processing", sequence="AUGGAAUUUCCCUAA", exons="a-b")["ok"])
+
+    def test_mutation_substitution_and_frameshift(self):
+        syn = ok("biology", "mutation", sequence="ATGGAATAA", mode="substitute", position=6, base="G", frame="1")
+        self.assertEqual(syn["classification"], "synonymous")
+        self.assertEqual(syn["originalProtein"], syn["mutantProtein"])
+        nonsense = ok("biology", "mutation", sequence="ATGGAATAA", mode="substitute", position=4, base="T", frame="1")
+        self.assertEqual(nonsense["classification"], "nonsense")
+        self.assertEqual(nonsense["mutantCodon"], "UAA")
+        missense = ok("biology", "mutation", sequence="ATGGAATAA", mode="substitute", position=5, base="C", frame="1")
+        self.assertEqual(missense["classification"], "missense")
+        insertion = ok("biology", "mutation", sequence="ATGGAATAA", mode="insert", position=4, base="A", frame="1")
+        deletion = ok("biology", "mutation", sequence="ATGGAATAA", mode="delete", position=4, frame="1")
+        self.assertEqual(insertion["classification"], "frameshift")
+        self.assertEqual(deletion["classification"], "frameshift")
+        self.assertEqual(len(insertion["mutated"]), 10)
+        self.assertEqual(len(deletion["mutated"]), 8)
+        self.assertFalse(op("biology", "mutation", sequence="ATGGAATAA", mode="substitute", position=99, base="A")["ok"])
+        self.assertFalse(op("biology", "mutation", sequence="ATGGAATAA", mode="substitute", position=4, base="G")["ok"])
+
+    def test_visual_sequence_is_validated_and_bounded(self):
+        r = ok("biology", "sequence", sequence="ATGC", kind="dna")
+        self.assertEqual(r["sceneSequence"], "ATGC")
+        self.assertFalse(r["sceneTruncated"])
+        big = ok("biology", "sequence", sequence="ATGC" * 30)
+        self.assertEqual(big["sceneSequence"], ("ATGC" * 20))
+        self.assertTrue(big["sceneTruncated"])
+
 if __name__ == "__main__":
     unittest.main()

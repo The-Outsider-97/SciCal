@@ -1,4 +1,4 @@
-import type { ApiErrorBody, CalcResult, FormCatalogue, GraphResult, Json, Prefs, Session, SessionMeta, Settings } from '../core/types.js';
+import type { ApiErrorBody, CalcResult, FormCatalogue, GraphResult, Json, Prefs, Session, SessionMeta, Settings, Verification } from '../core/types.js';
 import { uid } from '../core/util.js';
 
 export class ApiError extends Error {
@@ -32,6 +32,16 @@ export interface AssistStatus {
   notUsed?: Record<string, string>;
   stem?: string;
   [k: string]: unknown;
+}
+
+export interface StemStatus {
+  available: boolean;
+  reason: string | null;
+  mode: string;
+  domains: Record<string, string[]>;
+  operationCount: number;
+  version?: string | null;
+  checkable?: { calc: boolean; domain: Array<[string, string]> };
 }
 
 export interface Download { blob: Blob; filename: string }
@@ -190,6 +200,11 @@ export class Api {
   assistProbe(): Promise<AssistStatus> { return this.data('POST', '/api/assist/probe', {}); }
   assistConsent(sessionId: string, allow: boolean): Promise<Record<string, unknown>> { return this.data('POST', '/api/assist/consent', { sessionId, allow }); }
   assistExplain(sessionId: string | undefined, entry: Record<string, unknown>): Promise<Record<string, unknown>> { return this.data('POST', '/api/assist/explain', { sessionId, entry }); }
+  stemStatus(): Promise<StemStatus> { return this.data('GET', '/api/stem/status'); }
+  stemProbe(): Promise<StemStatus> { return this.data('POST', '/api/stem/probe', {}); }
+  stemVerify(entry: Record<string, unknown>, settings: Settings, context: string[]): Promise<Verification> {
+    return this.data('POST', '/api/stem/verify', { entry, settings, context });
+  }
   assistCrosscheck(values: unknown[]): Promise<Record<string, unknown>> { return this.data('POST', '/api/assist/crosscheck', { values }); }
 }
 

@@ -1,6 +1,8 @@
 """Biology operations exposed by the API."""
 from __future__ import annotations
 
+import re
+
 import itertools
 import math
 from collections import Counter
@@ -35,7 +37,7 @@ def sequence_analysis(params: dict, s: Settings) -> dict:
     out = C.Out(s)
     gc, n = S.gc_fraction(seq)
     comp = S.composition(seq)
-    data: dict[str, Any] = {"kind": kind.upper(), "length": len(seq), "composition": [{"base": b, "count": c, "percent": out.num(F(100 * c / len(seq)), "%")} for b, c in comp.items()]}
+    data: dict[str, Any] = {"kind": kind.upper(), "length": len(seq), "sceneSequence": seq[:80], "sceneTruncated": len(seq) > 80, "composition": [{"base": b, "count": c, "percent": out.num(F(100 * c / len(seq)), "%")} for b, c in comp.items()]}
     if n:
         data["gcContent"] = out.num(F(100 * gc / n), "%")
         out.step("GC content", f"(G + C) / length = {gc} / {n}")
@@ -80,7 +82,7 @@ def translate_op(params: dict, s: Settings) -> dict:
     if "N" in seq:
         out.warn("Codons that contain N are shown as X.")
     out.step("Genetic code", "Standard code (NCBI table 1); * marks a stop codon")
-    return out.done(protein=_preview(prot, 400), proteinFull=prot if len(prot) <= 5000 else None, length=len(prot), codons=rows[:300],
+    return out.done(protein=_preview(prot, 400), proteinFull=prot if len(prot) <= 5000 else None, length=len(prot), sceneRna=work.replace("T", "U")[:80], codons=rows[:300],
                     startsWithMet=prot.startswith("M"), stopCodons=prot.count("*"))
 
 
@@ -432,6 +434,167 @@ def genetic_code(params: dict, s: Settings) -> dict:
     return {"ok": True, "code": rows, "table": "Standard genetic code (NCBI translation table 1)", "enzymes": {k: {"site": v[0], "cut": v[1]} for k, v in S.RESTRICTION.items()}}
 
 
+
+# ------------------------------------------------------------------------------------------------------------------ sequence-driven teaching simulations
+def transcription_op(params: dict, s: Settings) -> dict:
+    """Transcribe an explicitly oriented DNA strand; orientation is never silently reversed."""
+    dna, _ = S.clean(C.text(params, "sequence"), "dna")
+    if len(dna) > 900:
+        raise C.field_error("sequence", "The interactive transcription limit is 900 bases")
+    strand = C.get(params, "strand", "coding")
+    if strand not in ("coding", "template"):
+        raise C.field_error("strand", "Choose coding or template")
+    # The coding sequence is 5'→3'; its complementary template is aligned 3'→5'.
+    # Input named template must be supplied 3'→5' in the direction of polymerase travel.
+    coding = dna if strand == "coding" else S.complement(dna, "dna")
+    template = S.complement(coding, "dna")
+    mrna = coding.replace("T", "U")
+    out = C.Out(s)
+    if "N" in dna:
+        out.warn("Unknown N bases remain N; their identities cannot be inferred.")
+    out.step("Orientation", "Coding: 5′→3′; template: 3′→5′; mRNA is synthesized 5′→3′")
+    out.step("Base pairing", "DNA template A→U, T→A, C→G, G→C")
+    out.warn("Sequence-level educational model: promoter binding, kinetics and termination signals are not predicted.")
+    return out.done(coding=coding, template=template, mrna=mrna, transcriptLength=len(mrna),
+                    inputStrand=strand, orientation={"coding": "5to3", "template": "3to5", "mrna": "5to3"},
+                    model="sequence-level, schematic")
+
+
+def protein_synthesis_op(params: dict, s: Settings) -> dict:
+    """Translation from AUG until the first in-frame stop, with an explicit incomplete result otherwise."""
+    seq, kind = _seq(params)
+    if len(seq) > 900:
+        raise C.field_error("sequence", "The interactive translation limit is 900 bases")
+    mrna = seq.replace("T", "U")
+    start_one = int(C.number(params, "start", default=0, integer=True, lo=0, hi=900))
+    if start_one:
+        start = start_one - 1
+        if mrna[start:start + 3] != "AUG":
+            raise C.field_error("start", "The selected start position must point to AUG")
+    else:
+        start = mrna.find("AUG")
+        if start < 0:
+            raise BiologyError("No AUG initiation codon found",
+                               hint="Supply a sequence containing AUG, or use Translate to examine arbitrary reading frames.")
+    out = C.Out(s)
+    translated: list[dict[str, Any]] = []
+    protein: list[str] = []
+    has_stop = False
+    for pos in range(start, len(mrna) - 2, 3):
+        codon = mrna[pos:pos + 3]
+        aa = S.CODON_TABLE.get(codon.replace("U", "T"), "X")
+        # Anticodons are reported aligned 3′→5′ opposite the 5′→3′ mRNA.
+        anticodon = None if aa == "*" else S.complement(codon, "rna")
+        translated.append({"index": len(translated) + 1, "position": pos + 1,
+                           "codon": codon, "anticodon": anticodon,
+                           "aa": aa, "aminoAcid": S.AA_NAMES.get(aa, "Stop" if aa == "*" else "Unknown")})
+        if aa == "*":
+            has_stop = True
+            break
+        protein.append(aa)
+    if not has_stop:
+        out.warn("No in-frame stop codon occurs after AUG; the displayed peptide is incomplete.")
+    if "X" in protein:
+        out.warn("At least one codon contains an unknown base (N); its amino acid is undetermined.")
+    if (len(mrna) - start) % 3:
+        out.warn("Trailing nucleotides not forming a full codon were not translated.")
+    out.step("Initiation", f"AUG at 1-based position {start + 1} (standard genetic code)")
+    out.step("Termination", "Stop codons use release factors, not tRNA" if has_stop else "Not reached")
+    return out.done(mrna=mrna, start=start + 1, frame=start % 3 + 1, codons=translated,
+                    protein="".join(protein), length=len(protein), complete=has_stop,
+                    geneticCode="NCBI 1 (standard)", model="sequence-level, schematic")
+
+
+def mutation_op(params: dict, s: Settings) -> dict:
+    """Compare a single edit in an explicitly selected reading frame (not a clinical prediction)."""
+    sequence, kind = _seq(params)
+    if len(sequence) > 900:
+        raise C.field_error("sequence", "The interactive mutation limit is 900 bases")
+    mode = C.get(params, "mode", "substitute")
+    if mode not in ("substitute", "insert", "delete"):
+        raise C.field_error("mode", "Mutation must be substitute, insert or delete")
+    pos = int(C.number(params, "position", integer=True, lo=1, hi=len(sequence) + (1 if mode == "insert" else 0)))
+    frame = int(C.number(params, "frame", integer=True, default=1, lo=1, hi=3)) - 1
+    letter = str(C.get(params, "base", "")).strip().upper()
+    if mode != "delete" and (len(letter) != 1 or letter not in ("ACGU" if kind == "rna" else "ACGT")):
+        raise C.field_error("base", "Choose one valid DNA or RNA nucleotide")
+    if mode == "substitute" and sequence[pos - 1] == letter:
+        raise C.field_error("base", "The replacement nucleotide must differ from the original")
+    mutated = (sequence[:pos - 1] + ("" if mode == "delete" else letter) +
+               sequence[pos:] if mode in ("delete", "substitute") else sequence[:pos - 1] + letter + sequence[pos - 1:])
+    before = S.translate(sequence, to_stop=False, frame=frame)
+    after = S.translate(mutated, to_stop=False, frame=frame)
+    old_triplet = S.to_dna(sequence)[frame + ((pos - 1 - frame) // 3) * 3:][:3] if pos - 1 >= frame else ""
+    new_triplet = S.to_dna(mutated)[frame + ((pos - 1 - frame) // 3) * 3:][:3] if pos - 1 >= frame else ""
+    old_aa = S.CODON_TABLE.get(old_triplet, "X") if len(old_triplet) == 3 else None
+    new_aa = S.CODON_TABLE.get(new_triplet, "X") if len(new_triplet) == 3 else None
+    if mode in ("insert", "delete"):
+        classification = "frameshift"
+    elif old_aa == "X" or new_aa == "X" or not old_aa or not new_aa:
+        classification = "indeterminate"
+    elif old_aa == new_aa:
+        classification = "synonymous"
+    elif new_aa == "*":
+        classification = "nonsense"
+    elif old_aa == "*":
+        classification = "stop-loss"
+    else:
+        classification = "missense"
+    out = C.Out(s)
+    if "N" in sequence:
+        out.warn("Unknown N bases can prevent a unique interpretation of the amino-acid changes.")
+    if mode == "substitute" and (old_triplet == "ATG" or new_triplet == "ATG"):
+        out.warn("A start codon has changed; this frame-only comparison cannot establish biological initiation.")
+    out.warn("A sequence edit alone does not establish phenotype, pathogenicity, protein folding or biological function.")
+    out.step("Comparison", "Frame " + str(frame + 1) + " of the supplied 5′→3′ strand (standard genetic code)")
+    out.step("Mutation", f"{mode} at 1-based nucleotide position {pos}: {classification}")
+    return out.done(original=sequence, mutated=mutated, kind=kind.upper(), mode=mode, position=pos,
+                    frame=frame + 1, base=letter if mode != "delete" else None,
+                    originalCodon=old_triplet.replace("T", "U"), mutantCodon=new_triplet.replace("T", "U"),
+                    originalAA=old_aa, mutantAA=new_aa, originalProtein=before, mutantProtein=after,
+                    classification=classification, model="reading-frame comparison, not phenotype prediction")
+
+
+
+def rna_processing_op(params: dict, s: Settings) -> dict:
+    """Educational eukaryotic splicing with explicitly supplied exon intervals."""
+    pre_rna, _ = S.clean(C.text(params, "sequence"), "rna")
+    if len(pre_rna) > 2000:
+        raise C.field_error("sequence", "RNA processing is limited to 2000 nucleotides")
+    spec = C.text(params, "exons", maxlen=500)
+    ranges: list[tuple[int, int]] = []
+    for token in spec.split(","):
+        match = re.fullmatch(r"\s*(\d+)\s*-\s*(\d+)\s*", token)
+        if not match:
+            raise C.field_error("exons", "Specify 1-based inclusive exon intervals such as 1-6,10-15")
+        a, b = map(int, match.groups())
+        if a < 1 or b < a or b > len(pre_rna):
+            raise C.field_error("exons", "Exon boundaries must be ordered and within the RNA sequence")
+        ranges.append((a, b))
+    if len(ranges) > 50:
+        raise C.field_error("exons", "At most 50 explicitly selected exons are supported")
+    ranges.sort()
+    if any(x[0] <= prev[1] for prev, x in zip(ranges, ranges[1:])):
+        raise C.field_error("exons", "Exons must not overlap")
+    mature = "".join(pre_rna[a - 1:b] for a, b in ranges)
+    introns = []
+    previous = 1
+    for a, b in ranges:
+        if a > previous:
+            introns.append({"start": previous, "end": a - 1, "length": a - previous})
+        previous = b + 1
+    if previous <= len(pre_rna):
+        introns.append({"start": previous, "end": len(pre_rna), "length": len(pre_rna) - previous + 1})
+    out = C.Out(s)
+    out.step("Exon concatenation", ", ".join(f"{a}-{b}" for a, b in ranges))
+    out.step("Spliced transcript", f"{len(pre_rna)} → {len(mature)} nucleotides")
+    out.warn("User-supplied exon positions define this model; SciCal did not predict splice sites, promoters, the 5′ cap or a poly(A) tail.")
+    return out.done(preMrna=pre_rna, matureMrna=mature,
+                    exons=[{"start": a, "end": b, "length": b - a + 1} for a, b in ranges],
+                    excludedRegions=introns, lengthBefore=len(pre_rna), lengthAfter=len(mature),
+                    model="explicit-interval eukaryotic RNA processing")
+
+
 OPS = {"sequence": sequence_analysis, "translate": translate_op, "orfs": orf_op, "restriction": restriction_op, "protein": protein_op,
        "hardy_weinberg": hardy_weinberg, "punnett": punnett, "growth": growth, "michaelis_menten": michaelis_menten, "lab_dilution": lab_dilution,
-       "genetic_code": genetic_code}
+       "genetic_code": genetic_code, "transcription": transcription_op, "protein_synthesis": protein_synthesis_op, "mutation": mutation_op, "rna_processing": rna_processing_op}

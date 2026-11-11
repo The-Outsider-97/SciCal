@@ -12,6 +12,7 @@ registerView('biology', async () => (await import('./views/domain.js')).createDo
 registerView('measurement', async () => (await import('./views/domain.js')).createDomainView('measurement'));
 registerView('finance', async () => (await import('./views/domain.js')).createDomainView('finance'));
 registerView('constants', async () => (await import('./views/constants.js')).createConstantsView());
+registerView('stem', async () => (await import('./views/stem.js')).createStemView());
 registerView('formulas', async () => (await import('./views/domain.js')).createDomainView('formulas'));
 
 async function start(): Promise<void> {

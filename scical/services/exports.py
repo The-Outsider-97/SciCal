@@ -42,6 +42,20 @@ def _val_text(e: dict[str, Any]) -> str:
     return ""
 
 
+def _stem_line(e: dict[str, Any]) -> str:
+    """One line saying what the SLAI STEM agent found when it was asked to compute this entry again (empty when it was not asked)."""
+    v = e.get("verification")
+    if not isinstance(v, dict) or not v.get("ran") or v.get("verdict") in (None, "unavailable"):
+        return ""
+    c = v.get("counts") if isinstance(v.get("counts"), dict) else {}
+    run = int(c.get("agree", 0)) + int(c.get("differ", 0))
+    if v.get("verdict") == "agree":
+        return f"STEM check: the SLAI STEM agent agrees ({run} of {run} computed again by a different route)."
+    if v.get("verdict") == "differ":
+        return f"STEM check: the SLAI STEM agent DIFFERS on {int(c.get('differ', 0))} of {run} checks - see the worksheet."
+    return ""
+
+
 def _val_latex(e: dict[str, Any]) -> str:
     r = e.get("result") or {}
     v = r.get("value") if isinstance(r, dict) else None
@@ -70,6 +84,9 @@ def to_text(doc: dict[str, Any]) -> str:
         out = _val_text(e)
         if out:
             lines.append(f"    = {out}")
+        stem = _stem_line(e)
+        if stem:
+            lines.append(f"    ({stem})")
         lines.append("")
     return "\n".join(lines)
 
@@ -87,6 +104,9 @@ def to_markdown(doc: dict[str, Any]) -> str:
             lines += [f"$$ {latex} $$"]
         elif out:
             lines += [f"**{out}**"]
+        stem = _stem_line(e)
+        if stem:
+            lines += ["", f"*{stem}*"]
         lines.append("")
     return "\n".join(lines)
 
@@ -188,10 +208,14 @@ def to_sldc(doc: dict[str, Any], sldc: Any) -> bytes:
                 add_equation(out_tex, "right", text=out_text)
             elif out_text:
                 add("paragraph", "= " + out_text)
+            if _stem_line(e):
+                add("paragraph", _stem_line(e))
             continue
         add("code", label or " ")
         if out_text:
             add("paragraph", "= " + out_text)
+        if _stem_line(e):
+            add("paragraph", _stem_line(e))
     sid = doc.get("id", "x")
     title = doc.get("name", "Worksheet") or "Worksheet"
     try:

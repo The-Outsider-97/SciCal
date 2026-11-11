@@ -11,6 +11,7 @@ import { math } from '../math-dom.js';
 import { store } from '../store.js';
 import { copyText, dialog, confirmDialog, emptyNote, glyph, iconButton, toast } from '../ui.js';
 import { askExplain } from './assistant.js';
+import { runCheck, stemAuto, stemBadge, stemEnabled, stemStatus, verificationPanel } from '../stem.js';
 
 interface Suggestion { label: string; workspace: string; kind: string; payload: Record<string, unknown>; confidence?: string; note?: string }
 type Shown = 'primary' | 'exact' | 'approx';
@@ -29,6 +30,8 @@ export function createMathView(): MathView {
   const status = h('div', { class: 'hints', 'aria-live': 'polite' });
   const shown = new Map<string, Shown>();
   const openSteps = new Set<string>();
+  const openStem = new Set<string>();
+  const stemBusy = new Set<string>();
   const suggestions = new Map<string, Suggestion[]>();
   let transient: { input: string; result: CalcResult; suggestions: Suggestion[] } | null = null;
   let busyJob: string | null = null;
@@ -102,6 +105,26 @@ export function createMathView(): MathView {
       s.exprLatex ? math(s.exprLatex) : h('code', { text: s.expr ?? '' }), ' = ', s.valueLatex ? math(s.valueLatex) : h('code', { text: s.value ?? '' }))));
   };
 
+  /** Ask the STEM agent to compute this line again. The answer is kept with the entry; the entry's own result is never touched. */
+  const checkEntry = async (e: Entry, open: boolean): Promise<void> => {
+    if (stemBusy.has(e.id)) return;
+    stemBusy.add(e.id);
+    render();
+    const idx = store.entries.findIndex((x) => x.id === e.id);
+    const settings: Settings = { ...store.settings, ...((e.settings ?? {}) as Partial<Settings>) };
+    const v = await runCheck(e, settings, contextFor(store.entries.slice(0, idx < 0 ? undefined : idx), e.input ?? ''));
+    stemBusy.delete(e.id);
+    if (v.ran) {
+      store.updateEntry(e.id, { verification: v });
+      if (open) openStem.add(e.id);
+    } else if (open) toast(v.summary, 'info', 9000);
+    render();
+  };
+
+  const autoCheck = async (e: Entry): Promise<void> => {
+    if ((await stemStatus()).available) await checkEntry(e, false);
+  };
+
   const calcCard = (e: Entry): HTMLElement => {
     const res = e.result as unknown as CalcResult;
     const v = res.value as FormattedValue;
@@ -117,6 +140,11 @@ export function createMathView(): MathView {
     if (flags?.complex) badges.push(h('span', { class: 'badge plain', text: 'complex' }));
     if (res.numeric && typeof res.numeric.method === 'string') badges.push(h('span', { class: 'badge plain', title: 'Numerical method used', text: res.numeric.method as string }));
     if (res.unit?.dimension) badges.push(h('span', { class: 'badge plain', text: res.unit.dimension }));
+    if (stemBusy.has(e.id)) badges.push(h('span', { class: 'badge plain', text: 'STEM checking…' }));
+    else {
+      const sb = stemBadge(e.verification, () => { if (openStem.has(e.id)) openStem.delete(e.id); else openStem.add(e.id); render(); });
+      if (sb) badges.push(sb);
+    }
 
     const toggleBox = canToggle ? h('div', { class: 'seg', role: 'group', 'aria-label': 'Show the result as' },
       (['exact', 'approx'] as const).map((m) => h('button', {
@@ -132,6 +160,7 @@ export function createMathView(): MathView {
       h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Copy the result as LaTeX', title: 'Copy as LaTeX', on: { click: () => void copyText(rendering.latex ?? rendering.text, 'LaTeX copied') } }, h('span', { text: 'TeX', style: { 'font-size': '.7rem', 'font-weight': '700' } })),
       res.steps?.length ? h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Show the working', title: 'Show the working', 'aria-pressed': String(stepsOpen), on: { click: () => { if (stepsOpen) openSteps.delete(e.id); else openSteps.add(e.id); render(); } } }, glyph('steps')) : null,
       iconButton('assistant', 'Explain this result', () => void askExplain(e)),
+      stemEnabled() ? iconButton('shield', 'Check this result with the SLAI STEM agent (computes it again by a different route)', () => void checkEntry(e, true)) : null,
       iconButton('trash', 'Delete this line', () => store.removeEntry(e.id), 'danger'));
 
     const sug = suggestions.get(e.id);
@@ -141,6 +170,7 @@ export function createMathView(): MathView {
       h('div', { class: 'meta' }, badges, toggleBox),
       noteLines(res.warnings),
       stepsOpen ? stepsBox(res) : null,
+      openStem.has(e.id) && e.verification ? verificationPanel(e.verification) : null,
       sug ? suggestionBox(sug) : null);
   };
 
@@ -223,6 +253,7 @@ export function createMathView(): MathView {
       const entry = store.addEntry({ kind: 'calc', workspace: 'math', input: text, result: res as unknown as Record<string, unknown>, ok: true, settings: settings as unknown as Record<string, unknown>, defines: definesOf(res) });
       input.value = '';
       grow();
+      if (stemEnabled() && stemAuto()) void autoCheck(entry);
       if (looksLikeSentence(text) && res.flags?.symbolic) {
         const list = await fetchSuggestions(text);
         if (list.length) { suggestions.set(entry.id, list); render(); }
