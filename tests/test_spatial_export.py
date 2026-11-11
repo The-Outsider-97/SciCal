@@ -32,6 +32,11 @@ from scical.integrations import slai_link
 from scical.services import spatial
 from scical.services.tasks import run
 
+try:
+    from .test_server import SERVER_PROCESS_FLAGS, stop_test_server
+except ImportError:
+    from test_server import SERVER_PROCESS_FLAGS, stop_test_server
+
 ROOT = Path(__file__).resolve().parent.parent
 SLAI = slai_link.find_slai_root()
 try:
@@ -618,7 +623,8 @@ class ExportRouteTests(unittest.TestCase):
         cls.log = open(Path(cls.tmp.name) / "server.log", "w")
         cls.proc = subprocess.Popen([sys.executable, "-m", "scical", "--no-browser", "--port", str(cls.port), "--token", cls.TOKEN, "--data-dir", cls.tmp.name + "/data",
                                      "--output-dir", cls.tmp.name + "/out", "--agents", "none", "--workers", "2", "--timeout", "20", "--slai-root", str(SLAI)],
-                                    cwd=ROOT, stdout=cls.log, stderr=subprocess.STDOUT)
+                                    cwd=ROOT, stdout=cls.log, stderr=subprocess.STDOUT,
+                                    creationflags=SERVER_PROCESS_FLAGS)
         for _ in range(150):
             try:
                 cls.raw("GET", "/")
@@ -630,10 +636,11 @@ class ExportRouteTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        cls.proc.terminate()
-        cls.proc.wait(timeout=10)
-        cls.log.close()
-        cls.tmp.cleanup()
+        try:
+            stop_test_server(cls.proc)
+        finally:
+            cls.log.close()
+            cls.tmp.cleanup()
 
     @classmethod
     def raw(cls, method, path, body=None, headers=None):
