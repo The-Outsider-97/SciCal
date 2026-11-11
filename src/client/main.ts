@@ -21,6 +21,7 @@ async function start(): Promise<void> {
     await store.init();
   } catch (e) {
     const msg = e instanceof ApiError && e.status === 401 ? 'SciCal is locked. Open it from the link printed when it started (it contains a one-time token).' : e instanceof Error ? e.message : 'SciCal could not start.';
+    window.dispatchEvent(new CustomEvent('slai:startup-error', { detail: msg }));
     replace(root, h('p', { class: 'boot', role: 'alert', text: msg }));
     return;
   }

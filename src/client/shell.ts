@@ -113,5 +113,5 @@ export function mount(root: HTMLElement): void {
   store.on('save', paintSession);
   store.on('entries', paintSession);
   paintSession();
-  void show(store.workspace);
+  void show(store.workspace).then(() => { window.dispatchEvent(new Event('slai:ready')); });
 }

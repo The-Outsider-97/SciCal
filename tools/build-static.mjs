@@ -11,7 +11,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, renameSync, rmSync } from '
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
@@ -65,3 +65,15 @@ try { rmSync(scratchRoot, { recursive: true, force: true }); } catch { /* best e
 cpSync(join(root, 'src', 'client', 'index.html'), join(dist, 'index.html'));
 cpSync(join(root, 'src', 'client', 'styles.css'), join(dist, 'styles.css'));
 console.log('Built dist/');
+
+// Standalone distributions include the published loader in dist/startup.
+const shared = process.env.SLAI_ROOT
+  ? join(process.env.SLAI_ROOT, 'applications', 'tools')
+  : join(root, '..', 'tools');
+const publisher = join(shared, 'build', 'publish-startup.mjs');
+if (existsSync(publisher)) {
+  const { publishStartup } = await import(pathToFileURL(publisher).href);
+  publishStartup(dist);
+} else if (!['loader.js', 'loader.css'].every(file => existsSync(join(dist, 'startup', file)))) {
+  throw new Error('Set SLAI_ROOT to build with the shared SLAI startup assets.');
+}
