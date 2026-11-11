@@ -502,6 +502,57 @@ def protein_synthesis_op(params: dict, s: Settings) -> dict:
                     protein="".join(protein), length=len(protein), complete=has_stop,
                     geneticCode="NCBI 1 (standard)", model="sequence-level, schematic")
 
+
+def mutation_op(params: dict, s: Settings) -> dict:
+    """Compare a single edit in an explicitly selected reading frame (not a clinical prediction)."""
+    sequence, kind = _seq(params)
+    if len(sequence) > 900:
+        raise C.field_error("sequence", "The interactive mutation limit is 900 bases")
+    mode = C.get(params, "mode", "substitute")
+    if mode not in ("substitute", "insert", "delete"):
+        raise C.field_error("mode", "Mutation must be substitute, insert or delete")
+    pos = int(C.number(params, "position", integer=True, lo=1, hi=len(sequence) + (1 if mode == "insert" else 0)))
+    frame = int(C.number(params, "frame", integer=True, default=1, lo=1, hi=3)) - 1
+    letter = str(C.get(params, "base", "")).strip().upper()
+    if mode != "delete" and (len(letter) != 1 or letter not in ("ACGU" if kind == "rna" else "ACGT")):
+        raise C.field_error("base", "Choose one valid DNA or RNA nucleotide")
+    if mode == "substitute" and sequence[pos - 1] == letter:
+        raise C.field_error("base", "The replacement nucleotide must differ from the original")
+    mutated = (sequence[:pos - 1] + ("" if mode == "delete" else letter) +
+               sequence[pos:] if mode in ("delete", "substitute") else sequence[:pos - 1] + letter + sequence[pos - 1:])
+    before = S.translate(sequence, to_stop=False, frame=frame)
+    after = S.translate(mutated, to_stop=False, frame=frame)
+    old_triplet = S.to_dna(sequence)[frame + ((pos - 1 - frame) // 3) * 3:][:3] if pos - 1 >= frame else ""
+    new_triplet = S.to_dna(mutated)[frame + ((pos - 1 - frame) // 3) * 3:][:3] if pos - 1 >= frame else ""
+    old_aa = S.CODON_TABLE.get(old_triplet, "X") if len(old_triplet) == 3 else None
+    new_aa = S.CODON_TABLE.get(new_triplet, "X") if len(new_triplet) == 3 else None
+    if mode in ("insert", "delete"):
+        classification = "frameshift"
+    elif old_aa == "X" or new_aa == "X" or not old_aa or not new_aa:
+        classification = "indeterminate"
+    elif old_aa == new_aa:
+        classification = "synonymous"
+    elif new_aa == "*":
+        classification = "nonsense"
+    elif old_aa == "*":
+        classification = "stop-loss"
+    else:
+        classification = "missense"
+    out = C.Out(s)
+    if "N" in sequence:
+        out.warn("Unknown N bases can prevent a unique interpretation of the amino-acid changes.")
+    if mode == "substitute" and (old_triplet == "ATG" or new_triplet == "ATG"):
+        out.warn("A start codon has changed; this frame-only comparison cannot establish biological initiation.")
+    out.warn("A sequence edit alone does not establish phenotype, pathogenicity, protein folding or biological function.")
+    out.step("Comparison", "Frame " + str(frame + 1) + " of the supplied 5′→3′ strand (standard genetic code)")
+    out.step("Mutation", f"{mode} at 1-based nucleotide position {pos}: {classification}")
+    return out.done(original=sequence, mutated=mutated, kind=kind.upper(), mode=mode, position=pos,
+                    frame=frame + 1, base=letter if mode != "delete" else None,
+                    originalCodon=old_triplet.replace("T", "U"), mutantCodon=new_triplet.replace("T", "U"),
+                    originalAA=old_aa, mutantAA=new_aa, originalProtein=before, mutantProtein=after,
+                    classification=classification, model="reading-frame comparison, not phenotype prediction")
+
+
 OPS = {"sequence": sequence_analysis, "translate": translate_op, "orfs": orf_op, "restriction": restriction_op, "protein": protein_op,
        "hardy_weinberg": hardy_weinberg, "punnett": punnett, "growth": growth, "michaelis_menten": michaelis_menten, "lab_dilution": lab_dilution,
-       "genetic_code": genetic_code, "transcription": transcription_op, "protein_synthesis": protein_synthesis_op}
+       "genetic_code": genetic_code, "transcription": transcription_op, "protein_synthesis": protein_synthesis_op, "mutation": mutation_op}
