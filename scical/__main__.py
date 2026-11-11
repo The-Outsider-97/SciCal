@@ -56,7 +56,12 @@ def main(argv: list[str] | None = None) -> int:
         s.worker_mode = args.worker_mode
     s.open_browser = not args.no_browser
 
-    client = Path(args.client_dir).expanduser().resolve() if args.client_dir else Path(__file__).resolve().parent.parent / "dist"
+    if args.client_dir:
+        client = Path(args.client_dir).expanduser().resolve()
+    elif getattr(sys, "frozen", False):                       # the frozen desktop engine keeps the web client in a folder beside it
+        client = Path(sys.executable).resolve().parent / "client"
+    else:
+        client = Path(__file__).resolve().parent.parent / "dist"
     if not (client / "index.html").is_file():
         print(f"The web client was not found in {client}. Run 'npm install && npm run build' in the SciCal folder.", file=sys.stderr)
         return 2

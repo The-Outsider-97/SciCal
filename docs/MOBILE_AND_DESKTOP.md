@@ -69,6 +69,8 @@ npm run app:dev
 npm run app:build:windows
 ```
 
+If PowerShell says "npx.ps1 cannot be loaded ... not digitally signed", use `npm.cmd run tauri -- build` (or `npx.cmd tauri build`) instead of `npx`; it is only PowerShell's script policy.
+
 The installers appear in `src-tauri\target\release\bundle\nsis\` (`.exe`) and `...\msi\`. The first build downloads and compiles the
 Rust crates and takes several minutes.
 

@@ -46,8 +46,7 @@ def main() -> int:
         "--distpath", str(work / "out"), "--workpath", str(work / "work"), "--specpath", str(work),
         "--paths", str(ROOT),
         "--collect-submodules", "scical", "--collect-data", "scical",
-        "--collect-submodules", "sympy", "--collect-data", "sympy",
-        "--collect-submodules", "mpmath", "--collect-data", "mpmath",
+        "--additional-hooks-dir", str(ROOT / "tools" / "pyi_hooks"),         # sympy and mpmath without their test suites
         "--hidden-import", "numpy",
         "--exclude-module", "tkinter", "--exclude-module", "matplotlib", "--exclude-module", "scipy", "--exclude-module", "pytest",
         str(ROOT / "tools" / "engine_entry.py"))
