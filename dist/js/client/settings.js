@@ -32,6 +32,8 @@ export function openSettings() {
     notation.addEventListener('change', () => store.setPrefs({ notation: notation.value }));
     const angle = h('select', { 'aria-label': 'Angle unit' }, [['rad', 'Radians'], ['deg', 'Degrees'], ['grad', 'Gradians']].map(([v, t]) => h('option', { value: v, text: t, selected: store.settings.angle === v })));
     angle.addEventListener('change', () => store.setPrefs({ angle: angle.value }));
+    const stemSel = h('select', { 'aria-label': 'STEM checks' }, [['ask', 'On request (a button on each result)'], ['auto', 'After every calculation'], ['off', 'Off']].map(([v, t]) => h('option', { value: v, text: t, selected: (p.stemVerify ?? 'ask') === v })));
+    stemSel.addEventListener('change', () => store.setPrefs({ stemVerify: stemSel.value }));
     const sw = (label, key, checked) => {
         const cb = h('input', { type: 'checkbox', checked });
         cb.addEventListener('change', () => store.setPrefs({ [key]: cb.checked }));
@@ -45,6 +47,9 @@ export function openSettings() {
         sw('Read numbers followed by a unit as quantities (5 m, 3 kg)', 'units', store.settings.units),
         sw('Allow complex results', 'complex', store.settings.complex),
         sw('Group digits (1 234 567)', 'thousands', store.settings.thousands),
+        h('h3', { text: 'SLAI STEM agent' }),
+        h('label', { class: 'field' }, h('span', { class: 'label', text: 'STEM checks' }), stemSel),
+        h('p', { class: 'muted', text: 'A STEM check asks SLAI’s deterministic STEM agent to compute a result again by a different route and compares the two. It runs on this computer, uses no language model and never changes your result. Switch it off to hide the buttons.' }),
         h('p', { class: 'muted', text: 'Settings are saved on this computer, in the SciCal data folder.' }),
     ]);
 }

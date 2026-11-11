@@ -18,6 +18,7 @@ This is the honest state of SciCal: what was built, how it was checked, what cou
 | 3D plotting: surfaces, parametric surfaces, space curves, point sets; rotate/pan/zoom, layers, sliders, transparent PNG | Done; sampling covered by unit tests, drawing checked in a real browser (light, dark, narrow) |
 | Save as SGEO / SDRW through SLAI's writers (3D model; derived wireframe and contour drawings; 2D drawing) | Done; round-trip tests re-open each file with SLAI's reader and compare coordinates, topology, unit, ids, metadata, material and provenance with stated tolerances; clicked through in a real browser |
 | Finance (24 calculators) and Constants (85) | Done, tested; see the v2.4 test results |
+| STEM agent integration: STEM Lab (7 operations plus the catalogue) and STEM checks on calculations and 8 workspace operations; verdicts stored in worksheets and exported | Done; verified against the real STEM numerics through a harness and a stand-in agent. The live path that creates the agent through SLAI's factory needs `scipy` and was **not** run here, see §4 |
 | Central SLAI launcher registration | **Not built**: SLAI has no registry to register with. Start with `python -m scical` or `run_scical.py` |
 
 ## 2. Security model
@@ -34,6 +35,8 @@ SciCal follows the pattern of the other SLAI applications (Reader was the templa
 * **Privacy.** Nothing leaves the computer. If SLAI agents are used, the text first goes to SLAI's Privacy agent, only per worksheet and only after the person allows it.
 
 ## 3. Test results
+
+Latest full run (cloud, Python 3.13): Python 404 tests, 2 of which fail only where there is no SLAI checkout (SLDC export, HTTP 503; they also failed before the STEM work) and 2 skip without the live agent; TypeScript 57 / 57 and `tsc --noEmit` clean; browser 25 / 25 (11 + 14). The table below is the earlier, per-suite record.
 
 | Suite | Where it ran | Result |
 | --- | --- | --- |
@@ -73,7 +76,14 @@ Run in your Linux VM with Python 3.10.12 against the real repository at `G:\GAIA
 
 Not verified: an agent actually writing an explanation, the Reader actually opening a hand-off file, and anything that depends on the Windows Python environment. Those need one run on your side: start SciCal normally, open the sparkle panel, press *Test the agents again*.
 
-SciCal's statistics cross-check (the *Cross-check* button on repeated measurements) is **experimental** and only works with the SLAI STEM agent. When the agent cannot be created it says so and why (as in the VM above); it does not substitute another method.
+### STEM agent (STEM Lab and STEM checks)
+
+* The agent is created once through SLAI's AgentFactory (`create("stem")`) and called with structured `perform_task` requests. Nothing is evaluated from text: SciCal translates its own parsed expression into the agent's grammar, and every variable is renamed with a `v_` prefix because the agent rejects names that are unit symbols.
+* A check never replaces SciCal's value. It computes the result by a different method (numerical quadrature against an exact integral, residual substitution for roots, finite-difference derivatives against symbolic ones, Monte-Carlo against first-order propagation) and reports agree / differ / skipped / failed with the tolerance used.
+* When the agent is missing the page says why (for example "needs scipy"); it is never imitated. `--agents none` switches it off.
+* Verified: the checks and the Lab against the real STEM numerical components (loaded in a harness) and against a plain-Python stand-in agent that can be made to give wrong answers, to prove that a disagreement is reported as one; 52 + 12 Python tests, 7 TypeScript tests, 14 browser tests.
+* **Not verified:** the live `AgentFactory.create("stem")` path. Neither the cloud nor your Linux VM had a SLAI environment with `scipy`, so on your computer run SciCal, open STEM Lab and press *Test again*. If the agent cannot start, the banner names the missing package (`pip install scipy`, `pip install -U colorama`).
+* The old *Cross-check* button on repeated measurements has been replaced by the STEM check.
 
 ## 5. Known limits
 
@@ -81,6 +91,8 @@ SciCal's statistics cross-check (the *Cross-check* button on repeated measuremen
 * Ionic charges must be written with a caret (`Cu^2+`, `NH4^+`); `Cu2+` is refused on purpose because it is ambiguous.
 * The math list in a worksheet shows calculation and note entries; chemistry, biology, measurement and graph entries are listed under *Saved in this worksheet* in their own workspaces and appear in exports.
 * Calculations are capped (see §2); very large factorials, powers and matrices are refused with a message instead of running for minutes.
+* STEM checks cover the operations listed in the user guide; everything else (graphs, most chemistry and biology) is not checked. A unit the STEM agent's table does not know is skipped, not failed. Eigenvalue checks cover symmetric matrices only.
+* `npm run build` needs `npm install` first (TypeScript). The shipped `dist/` runs without Node; a failed build leaves it untouched.
 * Plain-English input is rule-based and offline: it recognises common phrasings and offers proposals; it does not understand arbitrary sentences.
 * SLDC export and hand-off require a SLAI checkout; without one the other four export formats still work.
 * 3D: no implicit surfaces `F(x, y, z) = 0`; the painter's algorithm can mis-order interpenetrating surfaces; the jump heuristic may add a vertical riser to a deliberately stepped function; more than 160 samples per axis, 12 layers or 25 600 grid vertices per surface are refused.

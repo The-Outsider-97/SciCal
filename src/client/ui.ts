@@ -35,6 +35,8 @@ const GLYPHS: Record<string, string[]> = {
   play: ['M7 5l12 7-12 7z'],
   constants: ['M5 7h14', 'M9 7v11', 'M15 7c0 6 .2 9 3 11'],
   link: ['M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1', 'M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1'],
+  stem: ['M9 3h6', 'M10 3v6L5 19a1 1 0 0 0 .9 1.5h12.2A1 1 0 0 0 19 19l-5-10V3', 'M7.5 14h9'],
+  shield: ['M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z', 'M9 12l2 2 4-4'],
 };
 
 export function glyph(name: string, cls = ''): SVGElement {

@@ -73,7 +73,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = { angle: 'rad', complex: false, digits: 12, notation: 'auto', result: 'auto', units: false, thousands: false };
 
-export type Workspace = 'math' | 'graph' | 'chemistry' | 'biology' | 'measurement' | 'formulas' | 'finance' | 'constants';
+export type Workspace = 'math' | 'graph' | 'chemistry' | 'biology' | 'measurement' | 'formulas' | 'stem' | 'finance' | 'constants';
 export type EntryKind = 'calc' | 'domain' | 'graph' | 'formula' | 'note';
 
 /** The picture a graph entry was drawn as (what the person saw), kept with the entry so an SLDC export shows it. */
@@ -84,6 +84,29 @@ export interface GraphFigure {
   height?: number;
   transparent: boolean;
   series: Array<{ id: string; color: string | null; dash: 'solid' | 'dash' | 'dot' | 'dashdot' }>;
+}
+
+/** One independent second computation by the SLAI STEM agent. `skipped` and `failed` carry the reason in `note`. */
+export interface StemCheck {
+  title: string;
+  status: 'agree' | 'differ' | 'skipped' | 'failed';
+  scical: string | null;
+  stem: string | null;
+  difference: number | null;
+  tolerance: string | null;
+  via: string | null;
+  note: string | null;
+  unit?: string | null;
+}
+
+/** What the STEM agent found when asked to compute an entry again by another route. It never replaces the entry's own result. */
+export interface Verification {
+  ran: boolean;
+  verdict: 'agree' | 'differ' | 'none' | 'unavailable';
+  summary: string;
+  checks: StemCheck[];
+  counts: Partial<Record<StemCheck['status'], number>>;
+  label?: string;
 }
 
 export interface Entry {
@@ -104,6 +127,7 @@ export interface Entry {
   figure?: GraphFigure;
   defines?: string[];
   ok?: boolean;
+  verification?: Verification;
 }
 
 export interface SessionMeta { id: string; name: string; updated: string; created?: string; workspace?: string; entries: number }
@@ -129,6 +153,8 @@ export interface Prefs {
   lastSession?: string;
   complex?: boolean;
   keypad?: string;
+  /** STEM checks: off hides them, ask (default) shows a button, auto checks every calculation. */
+  stemVerify?: 'off' | 'ask' | 'auto';
   /** The person's own financial assumptions (defaults for the Finance forms; not constants). null removes one. */
   finCurrency?: string | null;
   finPlaces?: number | null;

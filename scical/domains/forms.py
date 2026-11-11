@@ -270,4 +270,5 @@ CATALOGUE = {
 
 def catalogue() -> dict[str, Any]:
     from .finance.formdefs import FINANCE         # loaded on first use: it imports the finance package, which needs this module's helpers
-    return {**CATALOGUE, "finance": {"title": "Economics & Finance", "ops": FINANCE}}
+    from .stemdefs import STEM                    # likewise: it uses this module's helpers
+    return {**CATALOGUE, "finance": {"title": "Economics & Finance", "ops": FINANCE}, "stem": {"title": "STEM Lab", "ops": STEM}}

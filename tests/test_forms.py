@@ -28,6 +28,8 @@ class FormsTest(unittest.TestCase):
 
     def test_examples_run(self):
         for dom, d in forms.catalogue().items():
+            if dom == "stem":
+                continue                                           # these run inside the server process against the STEM agent: tests/test_stem.py
             for o in d["ops"]:
                 with self.subTest(op=f"{dom}.{o['id']}"):
                     domain = "formulas" if dom == "formulas" else dom

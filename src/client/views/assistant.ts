@@ -5,6 +5,7 @@ import { api, ApiError, type AssistStatus } from '../api.js';
 import { h, replace } from '../dom.js';
 import { store } from '../store.js';
 import { dialog, toast } from '../ui.js';
+import { stemStatus, stemStatusLine } from '../stem.js';
 
 const ROLE_TEXT: Record<string, string> = {
   privacy: 'Privacy agent: decides whether worksheet text may be passed on at all',
@@ -30,6 +31,7 @@ export async function openAssistant(): Promise<void> {
     let st: AssistStatus;
     try { st = probe ? await api.assistProbe() : await api.assistStatus(); } catch (e) { replace(body, h('p', { class: 'note-line error', text: e instanceof ApiError ? e.message : 'Could not read the agent status.' })); return; }
     const s = store.session;
+    const stemState = await stemStatus(probe);
     const allow = h('input', { type: 'checkbox', checked: !!s?.agentsAllowed, disabled: !st.gateway || !s });
     allow.addEventListener('change', () => {
       store.setAgentsAllowed(allow.checked).then(() => toast(allow.checked ? 'Agents may now be used for this worksheet.' : 'Agents are off for this worksheet.', 'ok'))
@@ -41,7 +43,10 @@ export async function openAssistant(): Promise<void> {
       h('label', { class: 'switch' }, allow, h('span', { text: `Allow agents for “${s?.name ?? 'this worksheet'}”` })),
       h('p', { class: 'muted', text: 'When allowed, the text of the entry being explained is shown to SLAI’s Privacy agent first, and only passed to the language agent if the Privacy agent agrees. It stays on your computer unless your SLAI agents are configured to use an online model. You can switch this off at any time; it applies to this worksheet only.' }),
       h('div', { class: 'row' }, h('button', { class: 'btn', type: 'button', text: 'Test the agents again', on: { click: () => { replace(body, h('p', { class: 'muted', text: 'Testing…' })); void draw(true); } } })),
-      st.stem ? h('p', { class: 'muted', text: 'Statistics cross-check: ' + st.stem }) : null);
+      h('div', { class: 'stem-assist' },
+        h('h3', { text: 'STEM agent' }),
+        h('p', { class: stemState.available ? '' : 'note-line', text: stemStatusLine(stemState) }),
+        h('p', { class: 'muted', text: 'The STEM agent is SLAI’s deterministic scientific-computing authority. It needs no permission per worksheet because it does not read your text: it receives numbers and expressions, runs on this computer and uses no language model. SciCal uses it for STEM checks (the shield button on a result) and for the STEM Lab.' })));
   };
   await draw(false);
   d.el.focus();

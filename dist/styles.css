@@ -579,3 +579,66 @@ table.code th { text-align: center; }
 .export-block ul { margin: 0; padding-left: 1.2rem; display: grid; gap: .2rem; }
 .export-banner { margin: 0; padding: .55rem .75rem; border: var(--bw) solid var(--accent); border-radius: var(--radius-sm); background: var(--bg); }
 @media (max-width: 560px) { .export-summary dl { grid-template-columns: 1fr; } .export-row .inline-unit { margin-left: 0; } }
+
+
+/* Scientific visualizations share graph camera math and the current SciCal theme. */
+.science-scene { display: grid; gap: .55rem; min-width: 0; margin: .7rem 0; }
+.science-canvas { position: relative; width: 100%; height: clamp(270px, 42vh, 520px); border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; background: var(--plot-bg); box-shadow: var(--inset-sm); }
+.science-canvas canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.science-canvas canvas:active { cursor: grabbing; }
+.science-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.science-controls input[type="range"] { flex: 1 1 130px; min-width: 110px; }
+.science-controls select { width: auto; max-width: 160px; }
+.science-scene .muted { font-size: .83rem; line-height: 1.45; }
+.science-sequence { display: flex; flex-wrap: wrap; gap: .2rem; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.science-sequence .base { display: inline-flex; align-items: center; justify-content: center; padding: .12rem .28rem; min-width: 1.6rem; border-radius: .25rem; color: #141820; font-weight: 750; border: 1px solid #0002; }
+.science-scene .science-caveat { color: var(--muted); }
+
+
+/* Complete codon table/circle selector; compatible with keyboard focus and contrast themes. */
+.science-code-explorer { display: grid; gap: .75rem; }
+.science-code-explorer .science-controls input[type="search"] { flex: 1 1 280px; min-width: 180px; max-width: 100%; }
+.science-code-explorer .science-controls { align-items: center; }
+.science-code-explorer .science-codon-choice { display: grid; grid-template-columns: auto auto auto; align-items: center; gap: .3rem; width: 100%; text-align: left; padding: .2rem .35rem; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: .25rem; cursor: pointer; }
+.science-code-explorer .science-codon-choice:hover { border-color: var(--accent); }
+.science-code-explorer .science-codon-choice.selected { box-shadow: inset 0 0 0 2px var(--accent); }
+.science-code-explorer .science-codon-choice[hidden] { display: none; }
+.science-code-explorer .science-codon-choice .cd { display: flex; gap: .12rem; letter-spacing: .02em; }
+.science-code-explorer .science-wheel { display: block; width: min(100%, 540px); max-height: min(68vh, 560px); margin: auto; }
+.science-code-explorer .science-wheel path[data-codon] { cursor: pointer; outline-offset: 2px; }
+.science-code-explorer .science-wheel path[data-codon]:focus-visible { stroke: var(--accent); stroke-width: 4px; }
+.science-code-explorer .science-wheel path[data-codon]:hover { opacity: 1; filter: brightness(1.16); }
+@media (prefers-reduced-motion: reduce) { .science-scene canvas, .science-wheel path { transition: none; } }
+
+/* ------------------------------------------------------------------------------------------------ SLAI STEM agent: checks and the STEM Lab */
+.stem-banner { display: flex; align-items: center; gap: .8rem; padding: .7rem 1rem; margin-bottom: .9rem; }
+.stem-banner .glyph { width: 1.6rem; height: 1.6rem; flex: none; color: var(--accent); }
+.stem-banner .glyph.ok { color: var(--ok); }
+.stem-banner .glyph.warn { color: var(--danger); }
+.stem-banner .grow { flex: 1; min-width: 0; }
+.stem-view { display: grid; gap: .2rem; }
+.stem-slot { display: inline-flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+.stem-btn { display: inline-flex; align-items: center; gap: .35rem; }
+.stem-btn .glyph { width: 1rem; height: 1rem; color: var(--accent); }
+.badge.stem-badge { cursor: pointer; background: transparent; font: inherit; font-size: .74rem; font-weight: 700; }
+.badge.stem-badge.ok { border-color: var(--ok); color: var(--ok); }
+.badge.stem-badge.warn { border-color: var(--danger); color: var(--danger); }
+.badge.stem-badge.muted { border-color: var(--line); color: var(--muted); }
+.stem-box:empty { display: none; }
+.stem-panel { margin: .6rem 0; padding: .7rem .9rem; border-radius: var(--radius-sm); border: var(--bw) solid var(--line); box-shadow: var(--inset-sm); display: grid; gap: .5rem; min-width: 0; }
+.stem-head { display: flex; align-items: center; gap: .5rem; }
+.stem-head .glyph { width: 1.2rem; height: 1.2rem; flex: none; }
+.stem-head.ok .glyph { color: var(--ok); }
+.stem-head.warn .glyph { color: var(--danger); }
+.stem-head.muted .glyph { color: var(--muted); }
+.stem-table td { white-space: normal; vertical-align: top; }
+.stem-table td.num { white-space: nowrap; }
+.stem-state { white-space: nowrap; font-weight: 700; }
+.stem-state.agree { color: var(--ok); }
+.stem-state.differ { color: var(--danger); }
+.stem-state.skipped, .stem-state.failed { color: var(--muted); }
+.stem-state .mark { display: inline-block; min-width: 1em; text-align: center; }
+.stem-via { color: var(--muted); font-size: .8rem; font-family: var(--font-mono, ui-monospace, monospace); overflow-wrap: anywhere; }
+.stem-note { color: var(--muted); font-size: .84rem; max-width: 46ch; }
+.stem-foot { margin: 0; font-size: .82rem; }
+.stem-assist { display: grid; gap: .5rem; }

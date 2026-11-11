@@ -9,6 +9,7 @@ import { math } from '../math-dom.js';
 import { store } from '../store.js';
 import { copyText, dialog, confirmDialog, emptyNote, glyph, iconButton, toast } from '../ui.js';
 import { askExplain } from './assistant.js';
+import { runCheck, stemAuto, stemBadge, stemEnabled, stemStatus, verificationPanel } from '../stem.js';
 const EXAMPLES = [
     { text: '1/3 + 1/6' }, { text: 'sqrt(50)' }, { text: 'diff(sin(x)*x, x)' }, { text: 'integral(x^2, x, 0, 3)' }, { text: 'solve(x^2 - 5*x + 6 = 0)' },
     { text: '[[1,2],[3,4]]^-1' }, { text: '12 in -> cm', settings: { units: true } }, { text: 'normalprob(-1.96, 1.96, 0, 1)' },
@@ -20,6 +21,8 @@ export function createMathView() {
     const status = h('div', { class: 'hints', 'aria-live': 'polite' });
     const shown = new Map();
     const openSteps = new Set();
+    const openStem = new Set();
+    const stemBusy = new Set();
     const suggestions = new Map();
     let transient = null;
     let busyJob = null;
@@ -82,6 +85,29 @@ export function createMathView() {
             return null;
         return h('ol', { class: 'steps-list', 'aria-label': 'Working' }, steps.map((s) => h('li', null, s.exprLatex ? math(s.exprLatex) : h('code', { text: s.expr ?? '' }), ' = ', s.valueLatex ? math(s.valueLatex) : h('code', { text: s.value ?? '' }))));
     };
+    /** Ask the STEM agent to compute this line again. The answer is kept with the entry; the entry's own result is never touched. */
+    const checkEntry = async (e, open) => {
+        if (stemBusy.has(e.id))
+            return;
+        stemBusy.add(e.id);
+        render();
+        const idx = store.entries.findIndex((x) => x.id === e.id);
+        const settings = { ...store.settings, ...(e.settings ?? {}) };
+        const v = await runCheck(e, settings, contextFor(store.entries.slice(0, idx < 0 ? undefined : idx), e.input ?? ''));
+        stemBusy.delete(e.id);
+        if (v.ran) {
+            store.updateEntry(e.id, { verification: v });
+            if (open)
+                openStem.add(e.id);
+        }
+        else if (open)
+            toast(v.summary, 'info', 9000);
+        render();
+    };
+    const autoCheck = async (e) => {
+        if ((await stemStatus()).available)
+            await checkEntry(e, false);
+    };
     const calcCard = (e) => {
         const res = e.result;
         const v = res.value;
@@ -103,6 +129,16 @@ export function createMathView() {
             badges.push(h('span', { class: 'badge plain', title: 'Numerical method used', text: res.numeric.method }));
         if (res.unit?.dimension)
             badges.push(h('span', { class: 'badge plain', text: res.unit.dimension }));
+        if (stemBusy.has(e.id))
+            badges.push(h('span', { class: 'badge plain', text: 'STEM checking…' }));
+        else {
+            const sb = stemBadge(e.verification, () => { if (openStem.has(e.id))
+                openStem.delete(e.id);
+            else
+                openStem.add(e.id); render(); });
+            if (sb)
+                badges.push(sb);
+        }
         const toggleBox = canToggle ? h('div', { class: 'seg', role: 'group', 'aria-label': 'Show the result as' }, ['exact', 'approx'].map((m) => h('button', {
             type: 'button', 'aria-pressed': String((mode === 'primary' ? v.primary ?? 'exact' : mode) === m), text: m === 'exact' ? 'Exact' : 'Decimal',
             on: { click: () => { shown.set(e.id, m); render(); } },
@@ -111,9 +147,9 @@ export function createMathView() {
         const tools = h('div', { class: 'tools' }, iconButton('reuse', 'Use this input again', () => setInput(e.input ?? '')), iconButton('plus', 'Insert the result into the input', () => insertText(rendering.text)), iconButton('copy', 'Copy the result', () => void copyText(rendering.text, 'Result copied')), h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Copy the result as LaTeX', title: 'Copy as LaTeX', on: { click: () => void copyText(rendering.latex ?? rendering.text, 'LaTeX copied') } }, h('span', { text: 'TeX', style: { 'font-size': '.7rem', 'font-weight': '700' } })), res.steps?.length ? h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Show the working', title: 'Show the working', 'aria-pressed': String(stepsOpen), on: { click: () => { if (stepsOpen)
                     openSteps.delete(e.id);
                 else
-                    openSteps.add(e.id); render(); } } }, glyph('steps')) : null, iconButton('assistant', 'Explain this result', () => void askExplain(e)), iconButton('trash', 'Delete this line', () => store.removeEntry(e.id), 'danger'));
+                    openSteps.add(e.id); render(); } } }, glyph('steps')) : null, iconButton('assistant', 'Explain this result', () => void askExplain(e)), stemEnabled() ? iconButton('shield', 'Check this result with the SLAI STEM agent (computes it again by a different route)', () => void checkEntry(e, true)) : null, iconButton('trash', 'Delete this line', () => store.removeEntry(e.id), 'danger'));
         const sug = suggestions.get(e.id);
-        return h('article', { class: 'entry', data: { id: e.id } }, h('div', { class: 'in' }, h('div', { class: 'src' }, res.inputLatex ? math(res.inputLatex, { label: e.input }) : h('code', { text: e.input ?? '' })), tools), h('div', { class: 'out' }, outNode), h('div', { class: 'meta' }, badges, toggleBox), noteLines(res.warnings), stepsOpen ? stepsBox(res) : null, sug ? suggestionBox(sug) : null);
+        return h('article', { class: 'entry', data: { id: e.id } }, h('div', { class: 'in' }, h('div', { class: 'src' }, res.inputLatex ? math(res.inputLatex, { label: e.input }) : h('code', { text: e.input ?? '' })), tools), h('div', { class: 'out' }, outNode), h('div', { class: 'meta' }, badges, toggleBox), noteLines(res.warnings), stepsOpen ? stepsBox(res) : null, openStem.has(e.id) && e.verification ? verificationPanel(e.verification) : null, sug ? suggestionBox(sug) : null);
     };
     const noteCard = (e) => h('article', { class: 'entry note', data: { id: e.id } }, h('div', { class: 'in' }, h('div', { class: 'src', style: { color: 'var(--text)', 'white-space': 'pre-wrap' }, text: e.text ?? '' }), h('div', { class: 'tools' }, iconButton('trash', 'Delete this note', () => store.removeEntry(e.id), 'danger'))));
     const render = () => {
@@ -189,6 +225,8 @@ export function createMathView() {
             const entry = store.addEntry({ kind: 'calc', workspace: 'math', input: text, result: res, ok: true, settings: settings, defines: definesOf(res) });
             input.value = '';
             grow();
+            if (stemEnabled() && stemAuto())
+                void autoCheck(entry);
             if (looksLikeSentence(text) && res.flags?.symbolic) {
                 const list = await fetchSuggestions(text);
                 if (list.length) {
