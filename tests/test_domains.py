@@ -265,6 +265,33 @@ class ScientificVisualizationContractTests(unittest.TestCase):
         self.assertTrue(partial["warnings"])
         self.assertFalse(op("biology", "protein_synthesis", sequence="AUG" * 301)["ok"])
 
+    def test_118_visual_reference_isotopes_have_explicit_proton_and_neutron_counts(self):
+        from scical.domains.chemistry import elements as E
+        reference = [E.reference_isotope_mass_number(z) for z in range(1, 119)]
+        self.assertEqual(len(reference), 118)
+        self.assertEqual(reference[0], 1)       # H-1, protium
+        self.assertEqual(reference[1], 4)       # He-4
+        self.assertEqual(reference[10], 23)     # Na-23
+        self.assertEqual(reference[-1], 294)    # Og-294 (chosen representative, unverified)
+        for z in range(1, 119):
+            with self.subTest(z=z):
+                e = E.element(z)
+                out = ok("chemistry", "element", element=e["symbol"])["element"]
+                a = out["defaultVisualIsotopeA"]
+                self.assertEqual(a, reference[z - 1])
+                self.assertGreaterEqual(a, z)
+                if z != 1:
+                    self.assertGreater(a - z, 0, "non-hydrogen nucleus needs neutrons")
+                option = next(choice for choice in out["visualIsotopes"] if choice["A"] == a)
+                if option["source"] == "educational_reference":
+                    self.assertIsNone(option["mass"], "do not invent an AME2020 mass")
+                    self.assertIsNone(option["abundance"], "do not invent an abundance")
+                    self.assertIn("not independently verified", out["visualIsotopeNote"])
+        h = ok("chemistry", "element", element="H")["element"]
+        self.assertEqual([v["A"] for v in h["visualIsotopes"]], [1, 2, 3])
+        self.assertEqual([v["A"] - 1 for v in h["visualIsotopes"]], [0, 1, 2])
+        self.assertEqual(h["defaultVisualIsotopeA"], 1)
+
     def test_nist_reference_structures_and_unavailable_fallback(self):
         expected = {"H2": 2, "O2": 2, "H2O": 3, "CO2": 3, "NH3": 4, "CH4": 5, "C3H8": 11}
         for formula, count in expected.items():
