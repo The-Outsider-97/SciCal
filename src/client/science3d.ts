@@ -400,3 +400,64 @@ export function mutationScene(original: string, mutated: string, kind: 'DNA' | '
     at: (f) => source(f === 0 ? original : mutated).at(0).map((shape) => shape),
   };
 }
+
+
+export interface MolecularAtom { element: string; xyz: V3 }
+export interface MolecularBond { a: number; b: number; order: number }
+export interface MolecularStructure {
+  formula: string; name: string; charge: number; source: string;
+  atoms: MolecularAtom[]; bonds: MolecularBond[];
+}
+/** Molecules have explicit NIST-sourced atom coordinates and connectivity, never inferred from formulas. */
+export function moleculeScene(molecule: MolecularStructure): SceneSpec {
+  return {
+    description: molecule.name + ' (' + molecule.formula + ') · fixed NIST CCCBDB reference geometry in Å. Select atoms to inspect; display is not a trajectory. Source: ' + molecule.source,
+    extent: 2.6, frames: 2,
+    frameLabel: (f) => f ? 'Space-filling representation (illustrative relative radii)' : 'Ball-and-stick, bonds from explicit source topology',
+    at(frame) {
+      const parts: SciencePrimitive[] = [];
+      if (frame === 0) for (const bond of molecule.bonds) {
+        const a = molecule.atoms[bond.a]?.xyz;
+        const b = molecule.atoms[bond.b]?.xyz;
+        if (!a || !b) continue;
+        const repetitions = Math.max(1, Math.min(3, Math.trunc(bond.order)));
+        for (let i = 0; i < repetitions; i++) {
+          const delta = (i - (repetitions - 1) / 2) * .065;
+          const va: V3 = [a[0] + delta, a[1] + delta, a[2]];
+          const vb: V3 = [b[0] + delta, b[1] + delta, b[2]];
+          parts.push(line(va, vb, '#73889c', 3));
+        }
+      }
+      molecule.atoms.forEach((atom, i) => {
+        const radius = frame ? ({ H: .26, C: .36, N: .34, O: .32, S: .44 } as Record<string, number>)[atom.element] ?? .33 : .16;
+        parts.push(ball(atom.xyz, elementColor(atom.element), radius, atom.element + (i + 1)));
+      });
+      return parts;
+    },
+  };
+}
+export interface StructuredReactionSpecies extends StoichSpecies { structure: MolecularStructure | null }
+/** A reaction overview of fixed molecules; does not imply an atom-mapped mechanism or intermediates. */
+export function molecularReactionScene(reactants: StructuredReactionSpecies[], products: StructuredReactionSpecies[]): SceneSpec {
+  return {
+    description: 'Fixed NIST reference molecular structures before and after a balanced reaction. Arrangement and transition are schematic; this is not a chemical mechanism.',
+    frames: 2, extent: 5,
+    frameLabel: (f) => f ? 'Products (validated fixed molecular geometries)' : 'Reactants (validated fixed molecular geometries)',
+    at(frame) {
+      const side = frame ? products : reactants;
+      const structures = side.flatMap((sp) => Array.from({ length: sp.coefficient }, () => sp.structure)).filter((x): x is MolecularStructure => x !== null);
+      const result: SciencePrimitive[] = [];
+      structures.forEach((structure, i) => {
+        const cx = (i - (structures.length - 1) / 2) * 2.6;
+        const cy = Math.sin(i * 2) * .12;
+        const offset = (p: V3): V3 => [p[0] + cx, p[1] + cy, p[2]];
+        for (const bond of structure.bonds) {
+          const a = structure.atoms[bond.a], b = structure.atoms[bond.b];
+          if (a && b) result.push(line(offset(a.xyz), offset(b.xyz), '#748aa0', 3));
+        }
+        structure.atoms.forEach((a, j) => result.push(ball(offset(a.xyz), elementColor(a.element), .17, structure.formula + ' ' + a.element + (j + 1))));
+      });
+      return result;
+    },
+  };
+}
