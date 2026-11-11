@@ -6,7 +6,7 @@ import { h, replace, s } from './dom.js';
 import { math } from './math-dom.js';
 import { cellText } from './domain-results.js';
 import { dialog } from './ui.js';
-import { atomScene, scientificScene, nucleotideColor, type ScienceScene } from './science3d.js';
+import { atomScene, nucleusScene, orbitalAngularScene, scientificScene, nucleotideColor, type OrbitalShape, type ScienceScene } from './science3d.js';
 
 type R = Record<string, unknown>;
 const rows = (v: unknown): R[] => (Array.isArray(v) ? v.filter(isRecord) : []);
@@ -81,11 +81,23 @@ export function elementDialog(res: R): void {
   // A missing mass number must NOT be substituted with a rounded average atomic weight.
   isotope.disabled = iso.length === 0;
   const charge = h('input', { type: 'number', min: '-3', max: String(Math.min(3, Number(e.z))), step: '1', value: '0', 'aria-label': 'Net ionic charge' });
+  const mode = h('select', { 'aria-label': 'Atomic display mode' },
+    h('option', { value: 'shell', text: 'Educational electron shells' }),
+    h('option', { value: 'nucleus', text: 'Nuclear composition' }),
+    h('option', { value: 'orbital', text: 'Orbital angular symmetry (qualitative)' }));
+  const orbital = h('select', { 'aria-label': 'Orbital shape' },
+    h('option', { value: 's', text: 's · spherical (l=0)' }),
+    h('option', { value: 'p', text: 'pₓ/pᵧ/p_z · show p_z (l=1)' }),
+    h('option', { value: 'd', text: 'd · show d_z² (l=2)' }),
+    h('option', { value: 'f', text: 'f · show f_z³ (l=3)' }));
+  const orbitalField = h('label', { class: 'field' }, h('span', { class: 'label', text: 'Orbital shape (illustrative)' }), orbital);
+  orbitalField.hidden = true;
   const dataLine = h('p', { class: 'muted' });
   body.prepend(h('div', { class: 'section' },
     h('div', { class: 'sectitle', text: 'Interactive atomic model' }),
     h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { class: 'label', text: 'Isotope' }), isotope),
-      h('label', { class: 'field' }, h('span', { class: 'label', text: 'Ion charge (e)' }), charge)),
+      h('label', { class: 'field' }, h('span', { class: 'label', text: 'Ion charge (e)' }), charge),
+      h('label', { class: 'field' }, h('span', { class: 'label', text: 'Display mode' }), mode), orbitalField),
     dataLine, sceneHost));
   let current: ScienceScene | null = null;
   const update = (): void => {
@@ -99,11 +111,21 @@ export function elementDialog(res: R): void {
     }
     dataLine.textContent = z + ' protons · ' + (mass === null ? 'neutrons unknown' : (mass - z) + ' neutrons') + ' · ' + (z - q) + ' electrons. ' +
       'Electron configuration shown in the details is the neutral ground state; ionic shell positions are illustrative.';
-    current = scientificScene(atomScene(z, mass, q, str(e.configuration)));
+    orbitalField.hidden = mode.value !== 'orbital';
+    if (mode.value === 'orbital' && z - q === 0) {
+      replace(sceneHost, h('p', { role: 'alert', text: 'A fully ionized atom has no bound electrons to visualize.' }));
+      return;
+    }
+    const selectedScene = mode.value === 'nucleus' ? nucleusScene(z, mass, str(e.configuration)) :
+      mode.value === 'orbital' ? orbitalAngularScene(orbital.value as OrbitalShape) :
+      atomScene(z, mass, q, str(e.configuration));
+    current = scientificScene(selectedScene);
     replace(sceneHost, current.el);
   };
   isotope.addEventListener('change', update);
   charge.addEventListener('change', update);
+  mode.addEventListener('change', update);
+  orbital.addEventListener('change', update);
   const handle = dialog(`${str(e.name)} (${str(e.symbol)})`, body, { wide: true, onClose: () => current?.destroy() });
   void handle;
   update();
