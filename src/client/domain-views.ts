@@ -6,7 +6,8 @@ import { h, replace, s } from './dom.js';
 import { math } from './math-dom.js';
 import { cellText } from './domain-results.js';
 import { dialog } from './ui.js';
-import { atomScene, nucleusScene, orbitalAngularScene, scientificScene, nucleotideColor, type OrbitalShape, type ScienceScene } from './science3d.js';
+import { atomScene, nucleusScene, valenceQuarkScene, orbitalAngularScene, scientificScene, nucleotideColor,
+  type SceneSpec, type SceneSelection, type OrbitalShape, type ScienceScene } from './science3d.js';
 
 type R = Record<string, unknown>;
 const rows = (v: unknown): R[] => (Array.isArray(v) ? v.filter(isRecord) : []);
@@ -61,6 +62,64 @@ export function periodicTable(elements: R[], onPick: (e: R) => void): { el: HTML
   };
 }
 
+// Static educational reference values; authoritative citations are displayed in the UI.
+const PDG_2026 = 'https://pdg.lbl.gov/2026/listings/particle_properties.html';
+const CODATA_2022 = 'https://physics.nist.gov/cuu/Constants/';
+interface StandardParticle { name: string; symbol: string; family: string; charge: string; spin: string; mass: string }
+const STANDARD_PARTICLES: StandardParticle[] = [
+  { name: 'up', symbol: 'u', family: 'Quark', charge: '+2/3 e', spin: '1/2', mass: '≈2.16 MeV/c²*' },
+  { name: 'down', symbol: 'd', family: 'Quark', charge: '−1/3 e', spin: '1/2', mass: '≈4.7 MeV/c²*' },
+  { name: 'strange', symbol: 's', family: 'Quark', charge: '−1/3 e', spin: '1/2', mass: '≈93 MeV/c²*' },
+  { name: 'charm', symbol: 'c', family: 'Quark', charge: '+2/3 e', spin: '1/2', mass: '≈1.27 GeV/c²*' },
+  { name: 'bottom', symbol: 'b', family: 'Quark', charge: '−1/3 e', spin: '1/2', mass: '≈4.18 GeV/c²*' },
+  { name: 'top', symbol: 't', family: 'Quark', charge: '+2/3 e', spin: '1/2', mass: '≈172.6 GeV/c²*' },
+  { name: 'electron', symbol: 'e−', family: 'Lepton', charge: '−1 e', spin: '1/2', mass: '0.510999 MeV/c²' },
+  { name: 'electron neutrino', symbol: 'νe', family: 'Lepton', charge: '0', spin: '1/2', mass: 'Individual flavor mass not determined' },
+  { name: 'muon', symbol: 'μ−', family: 'Lepton', charge: '−1 e', spin: '1/2', mass: '105.658 MeV/c²' },
+  { name: 'muon neutrino', symbol: 'νμ', family: 'Lepton', charge: '0', spin: '1/2', mass: 'Individual flavor mass not determined' },
+  { name: 'tau', symbol: 'τ−', family: 'Lepton', charge: '−1 e', spin: '1/2', mass: '1776.9 MeV/c²' },
+  { name: 'tau neutrino', symbol: 'ντ', family: 'Lepton', charge: '0', spin: '1/2', mass: 'Individual flavor mass not determined' },
+  { name: 'photon', symbol: 'γ', family: 'Gauge boson', charge: '0', spin: '1', mass: 'Massless in the Standard Model' },
+  { name: 'gluon (8 color states)', symbol: 'g', family: 'Gauge boson', charge: '0', spin: '1', mass: 'Massless in the Standard Model' },
+  { name: 'W bosons', symbol: 'W±', family: 'Gauge boson', charge: '±1 e', spin: '1', mass: '≈80.4 GeV/c²' },
+  { name: 'Z boson', symbol: 'Z⁰', family: 'Gauge boson', charge: '0', spin: '1', mass: '≈91.19 GeV/c²' },
+  { name: 'Higgs boson', symbol: 'H', family: 'Scalar boson', charge: '0', spin: '0', mass: '≈125 GeV/c²' },
+];
+function standardModelExplorer(): HTMLElement {
+  return h('details', { class: 'science-model' },
+    h('summary', { text: 'Standard Model explorer · quarks, leptons, gauge and Higgs bosons' }),
+    h('p', { class: 'muted', text: 'Charges are multiples of the elementary charge. Spins are in units of ℏ. ' +
+      'Quarks and charged leptons have antiparticles; mass values shown are approximate. ' +
+      'Neutrino flavor states are quantum mixtures, so a separate precise mass for each flavor is not established.' }),
+    h('div', { class: 'table-wrap' }, h('table', { class: 'data' },
+      h('thead', null, h('tr', null, ['Particle', 'Symbol', 'Class', 'Charge', 'Spin', 'Rest mass'].map((t) => h('th', { text: t })))),
+      h('tbody', null, STANDARD_PARTICLES.map((p) => h('tr', null,
+        h('td', { text: p.name }), h('td', { text: p.symbol }), h('td', { text: p.family }),
+        h('td', { text: p.charge }), h('td', { text: p.spin }), h('td', { text: p.mass })))))),
+    h('p', { class: 'muted', text: '* Quark masses depend on the renormalization scheme and scale. ' +
+      'Gluons mediate QCD interactions; quarks and gluons are confined, and photons mediate electromagnetic interactions. ' +
+      'Weak interactions involve W/Z exchange. These are field-theoretic processes, not classical orbital tracks.' }),
+    h('p', null, h('a', { href: PDG_2026, target: '_blank', rel: 'noopener noreferrer', text: 'Particle Data Group 2026' }),
+      ' · ', h('a', { href: CODATA_2022, target: '_blank', rel: 'noopener noreferrer', text: 'NIST CODATA constants' })));
+}
+function particleFacts(kind: 'proton' | 'neutron' | 'electron'): Array<[string, string]> {
+  if (kind === 'proton') return [
+    ['Classification', 'Composite spin-½ baryon'], ['Valence content', 'uud (two up and one down quark)'],
+    ['Charge', '+1 e'], ['Spin', '½ ℏ'], ['Mass', '≈938.272 MeV/c²'],
+    ['Strong interaction', 'Confining QCD: gluons and sea-quark pairs contribute to the proton state'],
+  ];
+  if (kind === 'neutron') return [
+    ['Classification', 'Composite spin-½ baryon'], ['Valence content', 'udd (one up and two down quarks)'],
+    ['Charge', '0'], ['Spin', '½ ℏ'], ['Mass', '≈939.565 MeV/c²'],
+    ['Strong interaction', 'Confining QCD, including gluons and sea-quark pairs'],
+  ];
+  return [
+    ['Classification', 'Elementary charged lepton'], ['Quarks', 'None: no established internal composition'],
+    ['Charge', '−1 e'], ['Spin', '½ ℏ'], ['Mass', '0.51099895069 MeV/c² (CODATA 2022)'],
+    ['Interaction', 'Electromagnetic and weak; electron position is described quantum-mechanically'],
+  ];
+}
+
 export function elementDialog(res: R): void {
   const e = isRecord(res.element) ? res.element : {};
   const unc = e.uncertainty === null || e.uncertainty === undefined ? '' : ` (±${str(e.uncertainty)})`;
@@ -84,7 +143,8 @@ export function elementDialog(res: R): void {
   const mode = h('select', { 'aria-label': 'Atomic display mode' },
     h('option', { value: 'shell', text: 'Educational electron shells' }),
     h('option', { value: 'nucleus', text: 'Nuclear composition' }),
-    h('option', { value: 'orbital', text: 'Orbital angular symmetry (qualitative)' }));
+    h('option', { value: 'orbital', text: 'Orbital angular symmetry (qualitative)' }),
+    h('option', { value: 'quark', text: 'Quark-level baryon (conceptual)' }));
   const orbital = h('select', { 'aria-label': 'Orbital shape' },
     h('option', { value: 's', text: 's · spherical (l=0)' }),
     h('option', { value: 'p', text: 'pₓ/pᵧ/p_z · show p_z (l=1)' }),
@@ -93,18 +153,52 @@ export function elementDialog(res: R): void {
   const orbitalField = h('label', { class: 'field' }, h('span', { class: 'label', text: 'Orbital shape (illustrative)' }), orbital);
   orbitalField.hidden = true;
   const dataLine = h('p', { class: 'muted' });
+  const crumbs = h('nav', { class: 'science-breadcrumb', 'aria-label': 'Quantum exploration path', text: 'Atom' });
+  const inspection = h('div', { class: 'science-particle-inspection', 'aria-live': 'polite' },
+    h('p', { class: 'muted', text: 'Click an electron, proton or neutron to inspect it and zoom in.' }));
+  let selectedBaryon: 'proton' | 'neutron' = 'proton';
   body.prepend(h('div', { class: 'section' },
     h('div', { class: 'sectitle', text: 'Interactive atomic model' }),
     h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { class: 'label', text: 'Isotope' }), isotope),
       h('label', { class: 'field' }, h('span', { class: 'label', text: 'Ion charge (e)' }), charge),
       h('label', { class: 'field' }, h('span', { class: 'label', text: 'Display mode' }), mode), orbitalField),
-    dataLine, sceneHost));
+    dataLine, crumbs, sceneHost, inspection, standardModelExplorer()));
   let current: ScienceScene | null = null;
+  const inspectParticle = (selected: SceneSelection): void => {
+    const particle = selected.id.startsWith('proton-') ? 'proton' :
+      selected.id.startsWith('neutron-') ? 'neutron' :
+      selected.id.startsWith('electron-') ? 'electron' : null;
+    if (selected.id.startsWith('quark-')) {
+      const valence = selectedBaryon === 'proton' ? ['u', 'u', 'd'] : ['u', 'd', 'd'];
+      const i = Number(selected.id.split('-')[1]) - 1;
+      const flavor = valence[i] === 'd' ? 'down' : 'up';
+      crumbs.textContent = 'Atom › Nucleus › ' + selectedBaryon + ' › ' + flavor + ' quark';
+      replace(inspection, h('strong', { text: flavor === 'up' ? 'Up quark: +2/3 e, spin ½' : 'Down quark: −1/3 e, spin ½' }),
+        h('p', { class: 'muted', text: 'A valence quark contributes to the baryon quantum state; this depiction does not show a classical location.' }));
+      current?.focusOn(selected.position, 2.9);
+      return;
+    }
+    if (!particle) return;
+    if (particle !== 'electron') selectedBaryon = particle;
+    crumbs.textContent = 'Atom › ' + (particle === 'electron' ? 'Electron' : 'Nucleus › ' + particle);
+    const kv = particleFacts(particle);
+    const button = particle !== 'electron' ? h('button', {
+      type: 'button', class: 'btn small', text: 'Explore valence quarks (uud/udd)',
+      on: { click: () => { mode.value = 'quark'; update(); } },
+    }) : null;
+    replace(inspection, h('div', { class: 'sectitle', text: particle[0].toUpperCase() + particle.slice(1) }),
+      h('div', { class: 'kvs' }, kv.map(([title, value]) => h('div', { class: 'kv' },
+        h('div', { class: 'k', text: title }), h('div', { class: 'v', text: value })))),
+      h('p', { class: 'muted', text: 'Source: Particle Data Group 2026 and NIST CODATA 2022. ' +
+        'Atomic and nucleon spheres are schematic; quarks are not classical point beads in a fixed triangle.' }),
+      button);
+    current?.focusOn(selected.position, particle === 'electron' ? 2.7 : 5.0);
+  };
   const update = (): void => {
     current?.destroy();
     const z = Number(e.z);
     const mass = iso.length ? Number(isotope.value) : null;
-    const q = Math.trunc(Number(charge.value));
+    const q = Number(charge.value);
     if (!Number.isInteger(q) || q < -3 || q > Math.min(3, z)) {
       replace(sceneHost, h('p', { role: 'alert', text: 'Choose an integer charge between -3 and ' + Math.min(3, z) + '.' }));
       return;
@@ -112,13 +206,18 @@ export function elementDialog(res: R): void {
     dataLine.textContent = z + ' protons · ' + (mass === null ? 'neutrons unknown' : (mass - z) + ' neutrons') + ' · ' + (z - q) + ' electrons. ' +
       'Electron configuration shown in the details is the neutral ground state; ionic shell positions are illustrative.';
     orbitalField.hidden = mode.value !== 'orbital';
+    if (mode.value === 'quark') crumbs.textContent = 'Atom › Nucleus › ' + selectedBaryon + ' › valence quarks';
+    else if (mode.value === 'nucleus') crumbs.textContent = 'Atom › Nucleus';
+    else if (mode.value !== 'quark') crumbs.textContent = 'Atom';
     if (mode.value === 'orbital' && z - q === 0) {
       replace(sceneHost, h('p', { role: 'alert', text: 'A fully ionized atom has no bound electrons to visualize.' }));
       return;
     }
-    const selectedScene = mode.value === 'nucleus' ? nucleusScene(z, mass, str(e.configuration)) :
+    const selectedScene: SceneSpec = mode.value === 'nucleus' ? nucleusScene(z, mass, str(e.configuration)) :
       mode.value === 'orbital' ? orbitalAngularScene(orbital.value as OrbitalShape) :
+      mode.value === 'quark' ? valenceQuarkScene(selectedBaryon) :
       atomScene(z, mass, q, str(e.configuration));
+    selectedScene.onPick = inspectParticle;
     current = scientificScene(selectedScene);
     replace(sceneHost, current.el);
   };

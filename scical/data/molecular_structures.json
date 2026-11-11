@@ -1,7 +1,7 @@
 {
   "meta": {
     "unit": "angstrom",
-    "provenance": "NIST Computational Chemistry Comparison and Benchmark Database (CCCBDB), experimental geometries; coordinates rounded as listed; individual bond connectivity retained. Coordinates are fixed reference geometries, not simulated molecular dynamics."
+    "provenance": "Curated NIST CCCBDB reference geometries in Å. Individual sources and geometry methods are given where known; some are calculated conformers and not measured structures. Bonding is explicit; no reaction mechanisms are implied."
   },
   "models": [
     {
@@ -277,6 +277,155 @@
         {
           "a": 0,
           "b": 4,
+          "order": 1
+        }
+      ]
+    },
+    {
+      "formula": "C3H8",
+      "name": "Propane",
+      "charge": 0,
+      "source": "https://cccbdb.nist.gov/geom3x.asp?basis=21&casno=2699798&method=5",
+      "geometryMethod": "QCISD/6-311G** optimized geometry (NIST CCCBDB); computed, not experimental",
+      "atoms": [
+        {
+          "element": "C",
+          "xyz": [
+            0,
+            0,
+            0.5909
+          ]
+        },
+        {
+          "element": "C",
+          "xyz": [
+            0,
+            1.2737,
+            -0.2614
+          ]
+        },
+        {
+          "element": "C",
+          "xyz": [
+            0,
+            -1.2737,
+            -0.2614
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            0.8802,
+            0,
+            1.2476
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            -0.8802,
+            0,
+            1.2476
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            0,
+            2.1744,
+            0.3634
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            0,
+            -2.1744,
+            0.3634
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            0.8863,
+            1.3091,
+            -0.9074
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            -0.8863,
+            1.3091,
+            -0.9074
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            -0.8863,
+            -1.3091,
+            -0.9074
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            0.8863,
+            -1.3091,
+            -0.9074
+          ]
+        }
+      ],
+      "bonds": [
+        {
+          "a": 0,
+          "b": 1,
+          "order": 1
+        },
+        {
+          "a": 0,
+          "b": 2,
+          "order": 1
+        },
+        {
+          "a": 0,
+          "b": 3,
+          "order": 1
+        },
+        {
+          "a": 0,
+          "b": 4,
+          "order": 1
+        },
+        {
+          "a": 1,
+          "b": 5,
+          "order": 1
+        },
+        {
+          "a": 2,
+          "b": 6,
+          "order": 1
+        },
+        {
+          "a": 1,
+          "b": 7,
+          "order": 1
+        },
+        {
+          "a": 1,
+          "b": 8,
+          "order": 1
+        },
+        {
+          "a": 2,
+          "b": 9,
+          "order": 1
+        },
+        {
+          "a": 2,
+          "b": 10,
           "order": 1
         }
       ]

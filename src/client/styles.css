@@ -642,3 +642,24 @@ table.code th { text-align: center; }
 .stem-note { color: var(--muted); font-size: .84rem; max-width: 46ch; }
 .stem-foot { margin: 0; font-size: .82rem; }
 .stem-assist { display: grid; gap: .5rem; }
+
+
+/* Atomic drill-down, selected molecule context and readable scientific display controls. */
+.science-controls select { min-width: 150px; max-width: 100%; }
+.science-canvas canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.science-particle-inspection { display: grid; gap: .55rem; min-width: 0; padding: .8rem 1rem;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg); }
+.science-particle-inspection .kvs { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .5rem; }
+.science-breadcrumb { color: var(--muted); font-size: .88rem; font-weight: 600; }
+.science-model { padding: .8rem 1rem; border: 1px solid var(--line); border-radius: var(--radius-sm); min-width: 0; }
+.science-model summary { cursor: pointer; font-weight: 700; }
+.science-model .table-wrap { max-height: 420px; overflow: auto; margin: .55rem 0; }
+.science-model .data { font-size: .84rem; }
+.science-model p { line-height: 1.5; }
+.science-scene .science-controls .btn:focus-visible,
+.science-model summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (max-width: 650px) {
+  .science-controls { align-items: stretch; }
+  .science-controls select { max-width: min(100%, 210px); }
+  .science-canvas { height: clamp(260px, 38vh, 390px); }
+}

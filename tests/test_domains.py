@@ -266,7 +266,7 @@ class ScientificVisualizationContractTests(unittest.TestCase):
         self.assertFalse(op("biology", "protein_synthesis", sequence="AUG" * 301)["ok"])
 
     def test_nist_reference_structures_and_unavailable_fallback(self):
-        expected = {"H2": 2, "O2": 2, "H2O": 3, "CO2": 3, "NH3": 4, "CH4": 5}
+        expected = {"H2": 2, "O2": 2, "H2O": 3, "CO2": 3, "NH3": 4, "CH4": 5, "C3H8": 11}
         for formula, count in expected.items():
             with self.subTest(formula):
                 result = ok("chemistry", "molar_mass", formula=formula)
@@ -286,6 +286,28 @@ class ScientificVisualizationContractTests(unittest.TestCase):
         equation = ok("chemistry", "balance", equation="H2 + O2 -> H2O")
         self.assertTrue(all(entry["structure"] for entry in equation["atomInventory3d"]["reactants"]))
         self.assertTrue(all(entry["structure"] for entry in equation["atomInventory3d"]["products"]))
+
+    def test_propanes_balanced_3d_molecular_instances(self):
+        equation = ok("chemistry", "balance", equation="C3H8 + O2 -> CO2 + H2O")
+        self.assertTrue(equation["verification"]["balanced"])
+        self.assertEqual(equation["coefficients"], [1, 5, 3, 4])
+        scene = equation["atomInventory3d"]
+        self.assertEqual([item["coefficient"] for item in scene["reactants"]], [1, 5])
+        self.assertEqual([item["coefficient"] for item in scene["products"]], [3, 4])
+        self.assertEqual(equation["verification"]["atomsLeft"], {"C": 3, "H": 8, "O": 10})
+        self.assertEqual(equation["verification"]["atomsRight"], {"C": 3, "H": 8, "O": 10})
+        self.assertTrue(all(item["structure"] for item in scene["reactants"] + scene["products"]))
+        propane = scene["reactants"][0]["structure"]
+        self.assertEqual(len(propane["atoms"]), 11)
+        self.assertEqual(len(propane["bonds"]), 10)
+        carbon_edges = [b for b in propane["bonds"]
+                        if propane["atoms"][b["a"]]["element"] == "C"
+                        and propane["atoms"][b["b"]]["element"] == "C"]
+        self.assertEqual(len(carbon_edges), 2)
+        self.assertIn("QCISD", propane["geometryMethod"])
+        # Each oxygen reactant and each resulting product has distinct molecular instances.
+        self.assertEqual(sum(item["coefficient"] for item in scene["reactants"]), 6)
+        self.assertEqual(sum(item["coefficient"] for item in scene["products"]), 7)
 
     def test_balance_scene_inherits_verified_composition(self):
         r = ok("chemistry", "balance", equation="H2 + O2 -> H2O")
