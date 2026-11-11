@@ -36,6 +36,8 @@ def start(data_dir: str, output_dir: str, token: str | None = None, port: int = 
         client = Path(client_dir).expanduser().resolve() if client_dir else Path(__file__).resolve().parent.parent / "dist"
         if not (client / "index.html").is_file():
             raise FileNotFoundError(f"The web client was not found in {client}")
+        from .server.config import assets_for
+        s.assets_dir = assets_for(s.assets_dir, client)
         app = SciCalApp(s)
         try:
             server = SciCalHTTPServer(app, client)

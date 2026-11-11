@@ -57,6 +57,10 @@ def main() -> int:
     assets = app / "src" / "main" / "assets" / "scical_client"
     shutil.rmtree(assets, ignore_errors=True)
     shutil.copytree(APP / "dist", assets)
+    if (APP.parent / "assets").is_dir():                 # the SLAI-wide tab icons
+        shutil.copytree(APP.parent / "assets", assets / "assets")
+    else:
+        print("WARNING: applications/assets not found; the tab icons will be missing.")
     version = re.search(r'"version":\s*"([^"]+)"', (TAURI / "tauri.conf.json").read_text(encoding="utf-8")).group(1)
     stamp = f"{version}+{int((APP / 'dist' / 'index.html').stat().st_mtime)}"
     (assets / "version.txt").write_text(stamp, encoding="utf-8")

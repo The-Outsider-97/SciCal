@@ -35,6 +35,10 @@ def main() -> int:
     (OUT / "app").mkdir(parents=True)
     shutil.copytree(APP / "scical", OUT / "app" / "scical", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
     shutil.copytree(APP / "dist", OUT / "scical_client")
+    if (APP.parent / "assets").is_dir():                 # the SLAI-wide tab icons
+        shutil.copytree(APP.parent / "assets", OUT / "scical_client" / "assets")
+    else:
+        print("WARNING: applications/assets not found; the tab icons will be missing.", file=sys.stderr)
     pk = OUT / "app_packages"
     pk.mkdir()
     base = [sys.executable, "-m", "pip", "install", "--no-deps", "--only-binary=:all:", "--target", str(pk), "--python-version", "3.13"]

@@ -57,6 +57,11 @@ def main() -> int:
     shutil.rmtree(out, ignore_errors=True)
     shutil.copytree(built, out)
     shutil.copytree(ROOT / "dist", out / "client")
+    icons = ROOT.parent / "assets"                       # the SLAI-wide icons (applications/assets); the app carries its own copy
+    if icons.is_dir():
+        shutil.copytree(icons, out / "client" / "assets")
+    else:
+        print(f"WARNING: {icons} not found: the tab icons will be missing. Build from a SLAI checkout.", file=sys.stderr)
     print(f"\nThe engine is in {out}\nTry it:  {out / ('scical-engine.exe' if sys.platform.startswith('win') else 'scical-engine')} --no-browser --port-fallback --ready-line")
     return 0
 

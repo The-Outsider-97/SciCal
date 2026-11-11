@@ -35,6 +35,15 @@ def default_assets_dir() -> Path:
     return Path(__file__).resolve().parents[3] / "assets" if (Path(__file__).resolve().parents[3] / "assets").is_dir() else Path(__file__).resolve().parents[2] / "assets"
 
 
+def assets_for(configured: Path, client_dir: Path) -> Path:
+    """The icon folder to serve. Normally the SLAI-wide one; the packaged apps (desktop engine, Android, iOS) carry a copy in the web client's
+    own ``assets`` folder because there is no SLAI checkout beside them."""
+    if configured.is_dir() and any(configured.glob("*.png")):
+        return configured
+    bundled = client_dir / "assets"
+    return bundled if bundled.is_dir() else configured
+
+
 @dataclass
 class Settings:
     host: str = "127.0.0.1"

@@ -62,6 +62,8 @@ def main(argv: list[str] | None = None) -> int:
         client = Path(sys.executable).resolve().parent / "client"
     else:
         client = Path(__file__).resolve().parent.parent / "dist"
+    from .server.config import assets_for
+    s.assets_dir = assets_for(s.assets_dir, client)
     if not (client / "index.html").is_file():
         print(f"The web client was not found in {client}. Run 'npm install && npm run build' in the SciCal folder.", file=sys.stderr)
         return 2

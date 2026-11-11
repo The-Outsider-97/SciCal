@@ -106,6 +106,19 @@ class EmbeddedServerTests(unittest.TestCase):
 ROOT = Path(__file__).resolve().parent.parent
 
 
+class BundledIcons(unittest.TestCase):
+    def test_icons_are_served_from_the_clients_own_assets_folder_when_there_is_no_slai_folder(self):
+        import shutil
+        from scical.server.config import assets_for
+        with tempfile.TemporaryDirectory() as tmp:
+            client = Path(tmp) / "client"
+            shutil.copytree(ROOT / "dist", client)
+            (client / "assets").mkdir()
+            (client / "assets" / "SciCal.png").write_bytes(b"\x89PNG\r\n\x1a\nfake")
+            self.assertEqual(assets_for(Path(tmp) / "missing", client), client / "assets")
+            self.assertEqual(assets_for(client / "assets", client), client / "assets")
+
+
 class DesktopLauncherProtocol(unittest.TestCase):
     """What the Tauri shell relies on: one READY line with the address, a fallback port, and exit when the shell's pipe closes."""
 
