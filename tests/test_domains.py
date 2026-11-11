@@ -265,6 +265,28 @@ class ScientificVisualizationContractTests(unittest.TestCase):
         self.assertTrue(partial["warnings"])
         self.assertFalse(op("biology", "protein_synthesis", sequence="AUG" * 301)["ok"])
 
+    def test_nist_reference_structures_and_unavailable_fallback(self):
+        expected = {"H2": 2, "O2": 2, "H2O": 3, "CO2": 3, "NH3": 4, "CH4": 5}
+        for formula, count in expected.items():
+            with self.subTest(formula):
+                result = ok("chemistry", "molar_mass", formula=formula)
+                structure = result["molecularStructure3d"]
+                self.assertEqual(structure["formula"], formula)
+                self.assertEqual(len(structure["atoms"]), count)
+                self.assertTrue(structure["source"].startswith("https://cccbdb.nist.gov/"))
+                self.assertTrue(structure["bonds"])
+                for bond in structure["bonds"]:
+                    a = structure["atoms"][bond["a"]]["xyz"]
+                    b = structure["atoms"][bond["b"]]["xyz"]
+                    length = math.dist(a, b)
+                    self.assertGreater(length, 0.5)
+                    self.assertLess(length, 2.0)
+        self.assertNotIn("molecularStructure3d", ok("chemistry", "molar_mass", formula="C2H6O"))
+        self.assertNotIn("molecularStructure3d", ok("chemistry", "molar_mass", formula="NaCl"))
+        equation = ok("chemistry", "balance", equation="H2 + O2 -> H2O")
+        self.assertTrue(all(entry["structure"] for entry in equation["atomInventory3d"]["reactants"]))
+        self.assertTrue(all(entry["structure"] for entry in equation["atomInventory3d"]["products"]))
+
     def test_balance_scene_inherits_verified_composition(self):
         r = ok("chemistry", "balance", equation="H2 + O2 -> H2O")
         scene = r["atomInventory3d"]
