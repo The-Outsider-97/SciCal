@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { atomScene, electronShells, dnaScene, rnaScene, nucleotideColor, transcriptionScene, translationScene, reactionScene, moleculeScene, molecularReactionScene } from '../src/client/science3d.js';
+import { atomScene, electronShells, dnaScene, rnaScene, nucleotideColor, transcriptionScene, translationScene, reactionScene, moleculeScene, molecularReactionScene, orbitalAngularScene, nucleusScene, rnaProcessingScene } from '../src/client/science3d.js';
 
 test('scientific color mapping distinguishes all RNA bases and DNA thymine', () => {
   const bases = ['A', 'U', 'C', 'G', 'T'];
@@ -83,4 +83,25 @@ test('source-backed molecules show explicit bond topology without inventing bond
   );
   assert.equal(reaction.at(0).filter((p) => p.kind === 'ball').length, 3);
   assert.equal(reaction.at(1).filter((p) => p.kind === 'ball').length, 3);
+});
+
+
+test('orbital displays are angular approximations and distinguish phase', () => {
+  for (const symbol of ['s', 'p', 'd', 'f'] as const) {
+    const scene = orbitalAngularScene(symbol);
+    assert.match(scene.description, /radial wavefunction.*NOT calculated/i);
+    const dots = scene.at(0).filter((p) => p.kind === 'ball');
+    assert.ok(dots.length > 150, symbol);
+    assert.ok(dots.every((p) => p.kind === 'ball' && p.r > 0));
+  }
+  const protonOnly = nucleusScene(1, null, '1s1');
+  assert.equal(protonOnly.at(0).filter((p) => p.kind === 'ball').length, 1);
+});
+
+test('RNA processing viewer switches from precursor to spliced transcript', () => {
+  const scene = rnaProcessingScene('AUGGAAUUUCCCUAA', 'AUGGAACCCUAA');
+  assert.equal(scene.frames, 2);
+  assert.equal(scene.at(0).filter((p) => p.kind === 'ball').length, 15);
+  assert.equal(scene.at(1).filter((p) => p.kind === 'ball').length, 12);
+  assert.match(scene.frameLabel?.(1) ?? '', /mature mRNA/);
 });
