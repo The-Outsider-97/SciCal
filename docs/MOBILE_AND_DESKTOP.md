@@ -99,6 +99,10 @@ Notes:
 
 ## 2. Android
 
+**The short way:** install Android Studio (open it once so it installs the SDK; in its SDK Tools tick *NDK (Side by side)*), then double-click `build-android.cmd`. It finds Java, the SDK and the NDK itself, runs the steps below and opens the folder with the `.apk` (a debug build, which installs on a phone as is).
+
+The individual steps:
+
 You need Android Studio (SDK Platform 34+, **NDK (Side by side)**, Command-line tools), `JAVA_HOME` pointing at Android Studio's JDK,
 `ANDROID_HOME`, `NDK_HOME`, Rust with the Android targets, Node 20+, and **Python 3.13 on the PATH** (Chaquopy needs a Python of the same
 version on the build computer).
