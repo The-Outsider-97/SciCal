@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 from collections import Counter
 from decimal import Decimal
 from functools import lru_cache
@@ -64,11 +65,55 @@ def _validated_structure(formula: Any) -> dict | None:
     actual = dict(Counter(atom["element"] for atom in structure["atoms"]))
     if actual != dict(formula.comp):
         return None
-    atoms = structure["atoms"]
-    if any(not isinstance(atom.get("xyz"), list) or len(atom["xyz"]) != 3 for atom in atoms):
+    atoms = structure.get("atoms", [])
+    bonds = structure.get("bonds", [])
+    if not 1 <= len(atoms) <= 400 or not isinstance(bonds, list) or len(bonds) > 900:
         return None
-    if any(bond["a"] not in range(len(atoms)) or bond["b"] not in range(len(atoms))
-           or bond["a"] == bond["b"] for bond in structure["bonds"]):
+    if any(not isinstance(atom.get("xyz"), list) or len(atom["xyz"]) != 3
+           or any(not isinstance(coord, (int, float)) or not math.isfinite(coord) or abs(coord) > 100
+                  for coord in atom["xyz"]) for atom in atoms):
+        return None
+    neighbors: list[set[int]] = [set() for _ in atoms]
+    valence = [0] * len(atoms)
+    seen: set[tuple[int, int]] = set()
+    for bond in bonds:
+        a, b, order = bond.get("a"), bond.get("b"), bond.get("order")
+        if not isinstance(a, int) or not isinstance(b, int) or not isinstance(order, int):
+            return None
+        if a not in range(len(atoms)) or b not in range(len(atoms)) or a == b or order not in (1, 2, 3):
+            return None
+        edge = tuple(sorted((a, b)))
+        if edge in seen:
+            return None
+        seen.add(edge)
+        if not .55 <= math.dist(atoms[a]["xyz"], atoms[b]["xyz"]) <= 2.5:
+            return None
+        neighbors[a].add(b)
+        neighbors[b].add(a)
+        valence[a] += order
+        valence[b] += order
+    # Verify that all atoms really belong to the same connected molecule.
+    visited = {0}
+    pending = [0]
+    while pending:
+        for index in neighbors[pending.pop()]:
+            if index not in visited:
+                visited.add(index)
+                pending.append(index)
+    if len(visited) != len(atoms):
+        return None
+    # Valence checks are restricted to the ordinary neutral, closed-shell C/H/N/O
+    # molecules in the curated catalogue; they are not a universal bonding model.
+    ordinary_valence = {"H": 1, "C": 4, "N": 3, "O": 2}
+    for index, atom in enumerate(atoms):
+        expected = ordinary_valence.get(atom["element"])
+        if expected is not None and valence[index] != expected:
+            return None
+    for a in range(len(atoms)):
+        for b in range(a + 1, len(atoms)):
+            if (a, b) not in seen and math.dist(atoms[a]["xyz"], atoms[b]["xyz"]) < .38:
+                return None
+    if not isinstance(structure.get("source"), str) or not structure["source"].startswith("https://"):
         return None
     return structure
 
