@@ -1,0 +1,285 @@
+{
+  "meta": {
+    "unit": "angstrom",
+    "provenance": "NIST Computational Chemistry Comparison and Benchmark Database (CCCBDB), experimental geometries; coordinates rounded as listed; individual bond connectivity retained. Coordinates are fixed reference geometries, not simulated molecular dynamics."
+  },
+  "models": [
+    {
+      "formula": "H2",
+      "name": "Hydrogen",
+      "charge": 0,
+      "source": "https://cccbdb.nist.gov/exp2x.asp?casno=1333740",
+      "atoms": [
+        {
+          "element": "H",
+          "xyz": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            0,
+            0,
+            0.7414
+          ]
+        }
+      ],
+      "bonds": [
+        {
+          "a": 0,
+          "b": 1,
+          "order": 1
+        }
+      ]
+    },
+    {
+      "formula": "O2",
+      "name": "Oxygen",
+      "charge": 0,
+      "source": "https://cccbdb.nist.gov/exp2.asp?casno=7782447",
+      "atoms": [
+        {
+          "element": "O",
+          "xyz": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "element": "O",
+          "xyz": [
+            0,
+            0,
+            1.2075
+          ]
+        }
+      ],
+      "bonds": [
+        {
+          "a": 0,
+          "b": 1,
+          "order": 2
+        }
+      ]
+    },
+    {
+      "formula": "H2O",
+      "name": "Water",
+      "charge": 0,
+      "source": "https://cccbdb.nist.gov/exp2x.asp?casno=7732185",
+      "atoms": [
+        {
+          "element": "O",
+          "xyz": [
+            0,
+            0,
+            0.1173
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            0,
+            0.7572,
+            -0.4692
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            0,
+            -0.7572,
+            -0.4692
+          ]
+        }
+      ],
+      "bonds": [
+        {
+          "a": 0,
+          "b": 1,
+          "order": 1
+        },
+        {
+          "a": 0,
+          "b": 2,
+          "order": 1
+        }
+      ]
+    },
+    {
+      "formula": "CO2",
+      "name": "Carbon dioxide",
+      "charge": 0,
+      "source": "https://cccbdb.nist.gov/exp2x.asp?casno=124389",
+      "atoms": [
+        {
+          "element": "C",
+          "xyz": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "element": "O",
+          "xyz": [
+            0,
+            0,
+            1.1621
+          ]
+        },
+        {
+          "element": "O",
+          "xyz": [
+            0,
+            0,
+            -1.1621
+          ]
+        }
+      ],
+      "bonds": [
+        {
+          "a": 0,
+          "b": 1,
+          "order": 2
+        },
+        {
+          "a": 0,
+          "b": 2,
+          "order": 2
+        }
+      ]
+    },
+    {
+      "formula": "NH3",
+      "name": "Ammonia",
+      "charge": 0,
+      "source": "https://cccbdb.nist.gov/exp2.asp?casno=7664417",
+      "atoms": [
+        {
+          "element": "N",
+          "xyz": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            0,
+            -0.9377,
+            -0.3816
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            0.8121,
+            0.4689,
+            -0.3816
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            -0.8121,
+            0.4689,
+            -0.3816
+          ]
+        }
+      ],
+      "bonds": [
+        {
+          "a": 0,
+          "b": 1,
+          "order": 1
+        },
+        {
+          "a": 0,
+          "b": 2,
+          "order": 1
+        },
+        {
+          "a": 0,
+          "b": 3,
+          "order": 1
+        }
+      ]
+    },
+    {
+      "formula": "CH4",
+      "name": "Methane",
+      "charge": 0,
+      "source": "https://cccbdb.nist.gov/exp2x.asp?casno=74828",
+      "atoms": [
+        {
+          "element": "C",
+          "xyz": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            0.6276,
+            0.6276,
+            0.6276
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            0.6276,
+            -0.6276,
+            -0.6276
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            -0.6276,
+            0.6276,
+            -0.6276
+          ]
+        },
+        {
+          "element": "H",
+          "xyz": [
+            -0.6276,
+            -0.6276,
+            0.6276
+          ]
+        }
+      ],
+      "bonds": [
+        {
+          "a": 0,
+          "b": 1,
+          "order": 1
+        },
+        {
+          "a": 0,
+          "b": 2,
+          "order": 1
+        },
+        {
+          "a": 0,
+          "b": 3,
+          "order": 1
+        },
+        {
+          "a": 0,
+          "b": 4,
+          "order": 1
+        }
+      ]
+    }
+  ]
+}

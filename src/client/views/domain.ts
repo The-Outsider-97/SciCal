@@ -6,6 +6,7 @@ import { nowIso, newEntryId } from '../../core/session.js';
 import type { Entry, FormOp } from '../../core/types.js';
 import { debounce, isRecord } from '../../core/util.js';
 import { api, ApiError } from '../api.js';
+import { dnaScene, rnaScene, rnaProcessingScene, transcriptionScene, translationScene, mutationScene, moleculeScene, molecularReactionScene, reactionScene, scientificScene, type StoichSpecies, type StructuredReactionSpecies, type MolecularStructure, type TranslationStep, type ScienceScene, type SceneSpec } from '../science3d.js';
 import { h, replace } from '../dom.js';
 import { buildForm, type FormHandle } from '../domain-form.js';
 import { renderResult, type ResultCtx } from '../domain-results.js';
@@ -22,6 +23,76 @@ type R = Record<string, unknown>;
 const LIVE = new Set(['periodic_table', 'genetic_code', 'units', 'constants', 'formula_library']);
 /** Their results are large reference data, not a calculation worth keeping in a worksheet. */
 const NO_SAVE = new Set(['periodic_table', 'genetic_code', 'units']);
+
+
+/** Accept only finite bounded scientific structures from the trusted result payload. */
+function readStructure(raw: unknown): MolecularStructure | null {
+  if (!isRecord(raw) || !Array.isArray(raw.atoms) || !Array.isArray(raw.bonds) || !raw.atoms.length || raw.atoms.length > 180) return null;
+  const atoms = raw.atoms.filter(isRecord).map((atom) => ({
+    element: String(atom.element ?? ''),
+    xyz: Array.isArray(atom.xyz) && atom.xyz.length === 3 ? atom.xyz.map(Number) : [],
+  }));
+  const bonds = raw.bonds.filter(isRecord).map((b) => ({ a: Number(b.a), b: Number(b.b), order: Number(b.order) }));
+  if (atoms.length !== raw.atoms.length || !atoms.every((a) => /^[A-Z][a-z]?$/.test(a.element) && a.xyz.length === 3 && a.xyz.every(Number.isFinite)) ||
+      bonds.length !== raw.bonds.length || !bonds.every((b) => Number.isInteger(b.a) && Number.isInteger(b.b) && b.a >= 0 && b.b >= 0 &&
+        b.a < atoms.length && b.b < atoms.length && b.a !== b.b && Number.isInteger(b.order) && b.order >= 1 && b.order <= 3)) return null;
+  return {
+    formula: String(raw.formula ?? ''), name: String(raw.name ?? raw.formula ?? ''),
+    charge: Number(raw.charge ?? 0), source: String(raw.source ?? ''),
+    atoms: atoms.map((a) => ({ element: a.element, xyz: a.xyz as [number, number, number] })),
+    bonds,
+  };
+}
+
+/** Draw ONLY source-validated scientific data. Views never change the scientific calculation. */
+function scientificView(domain: string, operation: string, result: R): ScienceScene | null {
+  if (result.ok === false) return null;
+  let spec: SceneSpec | undefined;
+  if (domain === 'biology') {
+    if (operation === 'sequence' && typeof result.sceneSequence === 'string')
+      spec = result.kind === 'RNA' ? rnaScene(result.sceneSequence) : dnaScene(result.sceneSequence);
+    else if (operation === 'translate' && typeof result.sceneRna === 'string') spec = rnaScene(result.sceneRna);
+    else if (operation === 'transcription' && typeof result.coding === 'string' && typeof result.mrna === 'string')
+      spec = transcriptionScene(result.coding, result.mrna);
+    else if (operation === 'rna_processing' && typeof result.preMrna === 'string' && typeof result.matureMrna === 'string')
+      spec = rnaProcessingScene(result.preMrna, result.matureMrna);
+    else if (operation === 'mutation' && typeof result.original === 'string' && typeof result.mutated === 'string')
+      spec = mutationScene(result.original, result.mutated, result.kind === 'RNA' ? 'RNA' : 'DNA');
+    else if (operation === 'protein_synthesis' && typeof result.mrna === 'string' && Array.isArray(result.codons)) {
+      const cs: TranslationStep[] = result.codons.filter(isRecord).map((c) => ({
+        codon: String(c.codon ?? ''), aa: String(c.aa ?? 'X'), anticodon: typeof c.anticodon === 'string' ? c.anticodon : undefined,
+      }));
+      spec = translationScene(result.mrna, cs, Math.max(0, Number(result.start || 1) - 1));
+    }
+  }
+  if (domain === 'chemistry' && operation === 'molar_mass') {
+    const structure = readStructure(result.molecularStructure3d);
+    if (structure) spec = moleculeScene(structure);
+  }
+  if (domain === 'chemistry' && operation === 'balance' && isRecord(result.atomInventory3d) && result.atomInventory3d.verified === true) {
+    const inventory = result.atomInventory3d;
+    const clean = (raw: unknown): StructuredReactionSpecies[] => (Array.isArray(raw) ? raw.filter(isRecord) : []).map((s) => ({
+      species: String(s.species ?? ''), coefficient: Math.max(0, Number(s.coefficient ?? 0)),
+      atoms: Object.fromEntries(Object.entries(isRecord(s.atoms) ? s.atoms : {}).filter(([_, n]) => Number.isInteger(Number(n)) && Number(n) >= 0).map(([k, n]) => [k, Number(n)])),
+      structure: readStructure(s.structure),
+    }));
+    const reactants = clean(inventory.reactants);
+    const products = clean(inventory.products);
+    const sides = [...reactants, ...products];
+    const total = (rows: StoichSpecies[]): number => rows.reduce((sum, sp) =>
+      sum + sp.coefficient * Object.values(sp.atoms).reduce((n, amount) => n + amount, 0), 0);
+    // The primitive scene has a finite capacity: never show a truncated scene as an exact inventory.
+    if (sides.every((sp) => Number.isInteger(sp.coefficient) && sp.coefficient >= 0 && sp.coefficient <= 12 &&
+      Object.values(sp.atoms).every((n) => n <= 24)) &&
+      total(reactants) <= 240 && total(products) <= 240) {
+      const countMolecules = sides.reduce((sum, sp) => sum + sp.coefficient, 0);
+      spec = countMolecules <= 6 && sides.every((sp) => sp.structure !== null) ?
+        molecularReactionScene(reactants, products) : reactionScene(reactants, products);
+    }
+  }
+  if (!spec) return null;
+  return scientificScene(spec);
+}
 
 /** Fill empty Finance fields from the person's own financial parameters (Constants > Financial parameters). Returns the labels that were filled. */
 function financeDefaults(domainId: string, op: FormOp, state: FormState): string[] {
@@ -54,6 +125,7 @@ export function createDomainView(domainId: string): WorkspaceView {
   let last: { res: R; params: R; op: FormOp } | null = null;
   let periodicCache: R[] | null = null;
   let periodic: ReturnType<typeof periodicTable> | null = null;
+  let activeScientificScene: ScienceScene | null = null;
 
   const opList = h('nav', { class: 'oplist', 'aria-label': `${dom?.title ?? domainId} operations` });
   const title = h('h2');
@@ -83,6 +155,8 @@ export function createDomainView(domainId: string): WorkspaceView {
 
   // ---------------------------------------------------------------------------------------------------------- running
   const showResult = async (res: R, params: R, o: FormOp): Promise<void> => {
+    activeScientificScene?.destroy();
+    activeScientificScene = null;
     last = { res, params, op: o };
     const ctx = ctxFor(o, params);
     const nodes: Node[] = [];
@@ -105,6 +179,12 @@ export function createDomainView(domainId: string): WorkspaceView {
     else if (ok && o.view === 'constants') nodes.push(constantsTable(res, (t) => void copyText(t, 'Value copied')));
     else if (ok && o.view === 'library') nodes.push(formulaLibrary(res, useFormula));
     else nodes.push(renderResult(res, ctx));
+    const visual = scientificView(domainId, o.id, res);
+    if (visual) {
+      activeScientificScene = visual;
+      nodes.splice(1, 0, h('div', { class: 'section' },
+        h('div', { class: 'sectitle', text: 'Interactive scientific visualization' }), visual.el));
+    }
     replace(out, ...nodes);
   };
 
@@ -157,6 +237,8 @@ export function createDomainView(domainId: string): WorkspaceView {
   const choose = (id: string, params?: R, go = false): void => {
     const next = ops.find((o) => o.id === id);
     if (!next) return;
+    activeScientificScene?.destroy();
+    activeScientificScene = null;
     op = next;
     state = params ? seed(op, params) : emptyState(op);
     const prefilled = params ? [] : financeDefaults(domainId, op, state);
