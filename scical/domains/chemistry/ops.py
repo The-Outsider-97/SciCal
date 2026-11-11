@@ -85,6 +85,18 @@ def balance_op(params: dict, s: Settings) -> dict:
         out.step("Charge on each side", f"{res['verification']['chargeLeft']:+d}")
     if res.get("ambiguous"):
         out.warn(res["note"])
+    # Composition comes from the SAME validated formula parser and balanced coefficients.
+    # A formula does not determine a bond graph, conformation, or reaction mechanism.
+    if res["verification"]["balanced"]:
+        res["atomInventory3d"] = {
+            "kind": "schematic-stoichiometric-composition",
+            "reactants": [{"species": item.text, "coefficient": int(coef), "atoms": dict(item.formula.comp)}
+                          for item, coef in zip(left, res["coefficients"][:len(left)])],
+            "products": [{"species": item.text, "coefficient": int(coef), "atoms": dict(item.formula.comp)}
+                         for item, coef in zip(right, res["coefficients"][len(left):])],
+            "verified": True,
+            "warning": "Schematic atom inventory, not validated molecular geometry or reaction dynamics.",
+        }
     return out.done(**{k: v for k, v in res.items() if k != "ok"})
 
 
