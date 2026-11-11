@@ -4,18 +4,30 @@
 import { DEFAULT_CAMERA, cloneCamera, makeProjector, orbit, panBy, zoomBy, type Camera, type V3 } from '../core/scene3d.js';
 
 export type SciencePrimitive =
-  | { kind: 'ball'; p: V3; r: number; color: string; label?: string }
-  | { kind: 'line'; a: V3; b: V3; color: string; width?: number };
+  | { kind: 'ball'; p: V3; r: number; color: string; label?: string; id?: string; group?: string }
+  | { kind: 'line'; a: V3; b: V3; color: string; width?: number; label?: string; group?: string }
+  | { kind: 'cylinder'; a: V3; b: V3; r: number; color: string; label?: string; id?: string; group?: string };
+export interface SceneSelection {
+  id: string;
+  label: string;
+  type: 'ball' | 'line' | 'cylinder';
+  position: V3;
+  group?: string;
+}
 export interface ScienceScene {
   el: HTMLElement;
   setFrame(frame: number): void;
+  focusOn(position: V3, zoom?: number): void;
+  resetCamera(): void;
   destroy(): void;
 }
 export interface SceneSpec {
   description: string;
   frames?: number;
   extent?: number;
-  at(frame: number): SciencePrimitive[];
+  modes?: Array<{ id: string; label: string }>;
+  at(frame: number, mode?: string): SciencePrimitive[];
+  onPick?(selection: SceneSelection): void;
   frameLabel?(frame: number): string;
 }
 const BASE: Record<string, string> = {
@@ -42,11 +54,19 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
   let running = false;
   let raf = 0;
   let previous = 0;
+  let accumulated = 0;
   let cam: Camera = cloneCamera(DEFAULT_CAMERA);
   let speed = 2;
   let picked = '';
-  let pointer: { x: number; y: number; id: number } | null = null;
-  let lastPick: Array<{ x: number; y: number; r: number; depth: number; label: string }> = [];
+  let mode = spec.modes?.[0]?.id ?? 'default';
+  let focusPoint: V3 = [0, 0, 0];
+  let focusAnimation = 0;
+  const reducedMotion = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let pointer: { x: number; y: number; startX: number; startY: number; moved: boolean; id: number } | null = null;
+  let lastPick: Array<{ x: number; y: number; r: number; depth: number; selection: SceneSelection }> = [];
+  let cacheFrame = -1;
+  let cacheMode = '';
+  let cacheParts: SciencePrimitive[] = [];
   const el = node('div');
   el.className = 'science-scene';
   const canvas = node('canvas');
@@ -63,7 +83,7 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
   const status = node('span');
   status.className = 'muted';
   status.setAttribute('aria-live', 'polite');
-  const reset = button('Reset view', () => { cam = cloneCamera(DEFAULT_CAMERA); draw(); });
+  const reset = button('Reset view', () => resetCamera());
   const exportBtn = button('PNG', () => {
     canvas.toBlob((blob) => {
       if (!blob) return;
@@ -89,7 +109,7 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
   timeline.addEventListener('input', () => setFrame(Number(timeline.value)));
   const rate = node('select');
   rate.setAttribute('aria-label', 'Animation speed');
-  for (const s of [1, 2, 5, 10]) {
+  for (const s of [1, 2, 5, 10, 24]) {
     const o = node('option', s + ' steps/s');
     o.value = String(s);
     o.selected = s === speed;
@@ -98,8 +118,46 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
   rate.addEventListener('change', () => { speed = Number(rate.value); });
   const transport = node('div');
   transport.className = 'science-controls';
-  if (total > 1) transport.append(play, back, timeline, forward, rate, status);
+  if (spec.modes?.length) {
+    const display = node('select');
+    display.setAttribute('aria-label', 'Scientific visualization mode');
+    for (const m of spec.modes) {
+      const option = node('option', m.label);
+      option.value = m.id;
+      display.append(option);
+    }
+    display.addEventListener('change', () => { mode = display.value; cacheFrame = -1; draw(); });
+    controls.append(display);
+  }
+  if (total > 1) transport.append(play, back, timeline, forward, rate, status, button('Restart', () => {
+    if (running) toggle();
+    setFrame(0);
+  }));
   el.append(wrap, controls, transport, info);
+  function resetCamera(): void {
+    cancelAnimationFrame(focusAnimation);
+    focusPoint = [0, 0, 0];
+    cam = cloneCamera(DEFAULT_CAMERA);
+    draw();
+  }
+  function focusOn(position: V3, zoom = 3): void {
+    cancelAnimationFrame(focusAnimation);
+    const start = focusPoint;
+    const beginZoom = cam.zoom;
+    const targetZoom = clamp(zoom, .2, 15);
+    const startTime = performance.now();
+    const duration = reducedMotion ? 0 : 280;
+    const animate = (time: number): void => {
+      const t = duration ? clamp((time - startTime) / duration, 0, 1) : 1;
+      const eased = t * t * (3 - 2 * t);
+      focusPoint = start.map((x, i) => x + (position[i] - x) * eased) as V3;
+      cam = { ...cam, zoom: beginZoom + (targetZoom - beginZoom) * eased };
+      draw();
+      if (t < 1) focusAnimation = requestAnimationFrame(animate);
+    };
+    if (reducedMotion) animate(performance.now());
+    else focusAnimation = requestAnimationFrame(animate);
+  }
   function setFrame(f: number): void {
     frame = clamp(Math.trunc(f), 0, total - 1);
     timeline.value = String(frame);
@@ -111,14 +169,23 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
     running = !running;
     play.textContent = running ? 'Pause' : 'Play';
     previous = 0;
+    accumulated = 0;
     if (running) raf = requestAnimationFrame(tick);
     else cancelAnimationFrame(raf);
   }
   function tick(t: number): void {
     if (!running) return;
     if (!el.isConnected) { toggle(); return; }
-    if (previous && t - previous >= 1000 / speed) { previous = t; setFrame(frame + 1); }
-    if (!previous) previous = t;
+    if (previous) {
+      accumulated += Math.min(100, t - previous);
+      const interval = 1000 / speed;
+      if (accumulated >= interval) {
+        const frames = Math.floor(accumulated / interval);
+        accumulated -= frames * interval;
+        setFrame(frame + frames);
+      }
+    }
+    previous = t;
     if (running) raf = requestAnimationFrame(tick);
   }
   function draw(): void {
@@ -135,8 +202,13 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, w, h);
     const projection = makeProjector(cam, w, h);
-    const project = (p: V3) => projection.project([p[0] / extent, p[1] / extent, p[2] / extent]);
-    const objects = spec.at(frame);
+    const project = (p: V3) => projection.project([(p[0] - focusPoint[0]) / extent, (p[1] - focusPoint[1]) / extent, (p[2] - focusPoint[2]) / extent]);
+    if (cacheFrame !== frame || cacheMode !== mode) {
+      cacheParts = spec.at(frame, mode);
+      cacheFrame = frame;
+      cacheMode = mode;
+    }
+    const objects = cacheParts;
     lastPick = [];
     const drawn = objects.map((part) => {
       if (part.kind === 'ball') {
@@ -172,20 +244,30 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
       }
     }
   }
-  canvas.addEventListener('pointerdown', (e) => { pointer = { x: e.clientX, y: e.clientY, id: e.pointerId }; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener('pointerdown', (e) => {
+    cancelAnimationFrame(focusAnimation);
+    pointer = { x: e.clientX, y: e.clientY, startX: e.clientX, startY: e.clientY, moved: false, id: e.pointerId };
+    canvas.setPointerCapture(e.pointerId);
+  });
   canvas.addEventListener('pointermove', (e) => {
     if (!pointer || pointer.id !== e.pointerId) return;
     const dx = e.clientX - pointer.x, dy = e.clientY - pointer.y;
     if (e.shiftKey) cam = panBy(cam, dx, dy, Math.min(canvas.clientWidth, canvas.clientHeight));
     else cam = orbit(cam, dx, dy, Math.min(canvas.clientWidth, canvas.clientHeight));
-    pointer = { ...pointer, x: e.clientX, y: e.clientY }; draw();
+    pointer = { ...pointer, x: e.clientX, y: e.clientY, moved: pointer.moved || Math.hypot(e.clientX - pointer.startX, e.clientY - pointer.startY) > 4 };
+    draw();
   });
   canvas.addEventListener('pointerup', (e) => {
-    if (pointer && Math.abs(pointer.x - e.clientX) < 3 && Math.abs(pointer.y - e.clientY) < 3) {
+    if (pointer && !pointer.moved && Math.hypot(pointer.startX - e.clientX, pointer.startY - e.clientY) < 4) {
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left, y = e.clientY - rect.top;
       const choice = lastPick.filter((p) => Math.hypot(p.x - x, p.y - y) <= p.r).sort((a, b) => a.depth - b.depth)[0];
-      if (choice && choice.label !== picked) { picked = choice.label; info.textContent = spec.description + ' · selected: ' + picked; }
+      if (choice) {
+        picked = choice.selection.id;
+        info.textContent = spec.description + ' · selected: ' + choice.selection.label;
+        spec.onPick?.(choice.selection);
+        draw();
+      }
     }
     pointer = null;
   });
@@ -199,14 +281,20 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
     else if (e.key === 'ArrowDown') cam = orbit(cam, 0, -25, 300);
     else if (e.key === '+') cam = zoomBy(cam, 1.15);
     else if (e.key === '-') cam = zoomBy(cam, 1 / 1.15);
-    else if (e.key === '0') cam = cloneCamera(DEFAULT_CAMERA);
+    else if (e.key === '0') { resetCamera(); return; }
     else handled = false;
     if (handled) { e.preventDefault(); draw(); }
   });
   const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => draw());
   observer?.observe(wrap);
   setFrame(0);
-  return { el, setFrame, destroy: () => { running = false; cancelAnimationFrame(raf); observer?.disconnect(); el.remove(); } };
+  return { el, setFrame, focusOn, resetCamera, destroy: () => {
+    running = false;
+    cancelAnimationFrame(raf);
+    cancelAnimationFrame(focusAnimation);
+    observer?.disconnect();
+    el.remove();
+  } };
 }
 const point = (x: number, y: number, z: number): V3 => [x, y, z];
 const ball = (p: V3, color: string, r = .07, label?: string): SciencePrimitive => ({ kind: 'ball', p, r, color, label });
