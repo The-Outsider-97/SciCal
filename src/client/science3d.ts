@@ -689,56 +689,125 @@ export interface MolecularStructure {
   formula: string; name: string; charge: number; source: string;
   atoms: MolecularAtom[]; bonds: MolecularBond[];
 }
-/** Molecules have explicit NIST-sourced atom coordinates and connectivity, never inferred from formulas. */
+export type MoleculeDisplay = 'ball-stick' | 'space' | 'wire';
+const vdwRadii: Record<string, number> = { H: 1.2, C: 1.7, N: 1.55, O: 1.52, F: 1.47, S: 1.80, Cl: 1.75 };
+const ballStickRadii: Record<string, number> = { H: .16, C: .23, N: .22, O: .21, F: .20, S: .26, Cl: .25 };
+const sub3 = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+function moleculeCenter(molecule: MolecularStructure): V3 {
+  const count = molecule.atoms.length;
+  return [
+    molecule.atoms.reduce((s, a) => s + a.xyz[0], 0) / count,
+    molecule.atoms.reduce((s, a) => s + a.xyz[1], 0) / count,
+    molecule.atoms.reduce((s, a) => s + a.xyz[2], 0) / count,
+  ];
+}
+function moleculeBound(molecule: MolecularStructure): number {
+  const center = moleculeCenter(molecule);
+  return Math.max(.5, ...molecule.atoms.map((atom) =>
+    norm3(sub3(atom.xyz, center)) + (vdwRadii[atom.element] ?? 1.7)));
+}
+export interface MoleculePlacement {
+  molecule: MolecularStructure;
+  id: string;
+  species: string;
+  index: number;
+  origin: V3;
+  radius: number;
+}
+/** Deterministic 2D row packing of enclosing 3D van-der-Waals bounding spheres. */
+export function layoutMoleculeInstances(species: StructuredReactionSpecies[]): MoleculePlacement[] {
+  const list: MoleculePlacement[] = [];
+  for (const sp of species) {
+    if (!sp.structure) continue;
+    for (let i = 0; i < sp.coefficient; i++) {
+      const molecule = sp.structure;
+      list.push({ molecule, id: sp.species + '-' + (i + 1), species: sp.species,
+        index: i + 1, origin: [0, 0, 0], radius: moleculeBound(molecule) });
+    }
+  }
+  if (!list.length) return list;
+  const columns = Math.max(1, Math.ceil(Math.sqrt(list.length)));
+  const rows: MoleculePlacement[][] = [];
+  for (let i = 0; i < list.length; i += columns) rows.push(list.slice(i, i + columns));
+  const gap = .60;
+  const rowRadii = rows.map((row) => Math.max(...row.map((m) => m.radius)));
+  const rowHeights = rowRadii.map((r) => r * 2);
+  const totalHeight = rowHeights.reduce((a, b) => a + b, 0) + gap * (rows.length - 1);
+  let cursorY = -totalHeight / 2;
+  rows.forEach((row, j) => {
+    const width = row.reduce((s, m) => s + 2 * m.radius, 0) + gap * (row.length - 1);
+    let cursorX = -width / 2;
+    for (const item of row) {
+      item.origin = [cursorX + item.radius, cursorY + rowRadii[j], 0];
+      cursorX += item.radius * 2 + gap;
+    }
+    cursorY += rowHeights[j] + gap;
+  });
+  return list;
+}
+export function placementsDoNotOverlap(places: MoleculePlacement[], clearance = 0): boolean {
+  for (let i = 0; i < places.length; i++) for (let j = i + 1; j < places.length; j++)
+    if (norm3(sub3(places[i].origin, places[j].origin)) + 1e-8 <
+      places[i].radius + places[j].radius + clearance) return false;
+  return true;
+}
+function moleculePrimitives(molecule: MolecularStructure, location: V3, mode: MoleculeDisplay, group: string): SciencePrimitive[] {
+  const parts: SciencePrimitive[] = [];
+  const center = moleculeCenter(molecule);
+  const placed = (p: V3): V3 => add3(sub3(p, center), location);
+  const bonds = molecule.bonds;
+  if (mode !== 'space') for (let j = 0; j < bonds.length; j++) {
+    const bond = bonds[j];
+    const a = molecule.atoms[bond.a], b = molecule.atoms[bond.b];
+    if (!a || !b) continue;
+    const start = placed(a.xyz), end = placed(b.xyz);
+    const tangent = unit3(sub3(end, start));
+    const basis: V3 = Math.abs(tangent[2]) > .95 ? [0, 1, 0] : [0, 0, 1];
+    const perpendicular = unit3(cross3(tangent, basis));
+    const repetitions = Math.min(3, Math.max(1, bond.order));
+    for (let k = 0; k < repetitions; k++) {
+      const offset = multiply3(perpendicular, (k - (repetitions - 1) / 2) * .13);
+      const p = add3(start, offset), q = add3(end, offset);
+      parts.push(mode === 'wire' ? { kind: 'line', a: p, b: q, color: '#adbac9', width: 1.3, group } :
+        rod(p, q, '#7b8fa5', .053, undefined, undefined, group));
+    }
+  }
+  molecule.atoms.forEach((atom, i) => {
+    const radius = mode === 'space' ? vdwRadii[atom.element] ?? 1.7 :
+      mode === 'wire' ? .065 : ballStickRadii[atom.element] ?? .24;
+    parts.push({ kind: 'ball', p: placed(atom.xyz), r: radius,
+      color: elementColor(atom.element), label: atom.element + (i + 1),
+      id: group + '-atom-' + (i + 1), group });
+  });
+  return parts;
+}
+const moleculeModes = [
+  { id: 'ball-stick', label: 'Ball-and-stick' }, { id: 'space', label: 'Space-filling (van der Waals)' },
+  { id: 'wire', label: 'Wireframe' },
+];
+/** Only explicit, externally sourced geometry is ever rendered as a connected molecule. */
 export function moleculeScene(molecule: MolecularStructure): SceneSpec {
+  const bound = moleculeBound(molecule);
   return {
-    description: molecule.name + ' (' + molecule.formula + ') · fixed NIST CCCBDB reference geometry in Å. Select atoms to inspect; display is not a trajectory. Source: ' + molecule.source,
-    extent: 2.6, frames: 2,
-    frameLabel: (f) => f ? 'Space-filling representation (illustrative relative radii)' : 'Ball-and-stick, bonds from explicit source topology',
-    at(frame) {
-      const parts: SciencePrimitive[] = [];
-      if (frame === 0) for (const bond of molecule.bonds) {
-        const a = molecule.atoms[bond.a]?.xyz;
-        const b = molecule.atoms[bond.b]?.xyz;
-        if (!a || !b) continue;
-        const repetitions = Math.max(1, Math.min(3, Math.trunc(bond.order)));
-        for (let i = 0; i < repetitions; i++) {
-          const delta = (i - (repetitions - 1) / 2) * .065;
-          const va: V3 = [a[0] + delta, a[1] + delta, a[2]];
-          const vb: V3 = [b[0] + delta, b[1] + delta, b[2]];
-          parts.push(line(va, vb, '#73889c', 3));
-        }
-      }
-      molecule.atoms.forEach((atom, i) => {
-        const radius = frame ? ({ H: .26, C: .36, N: .34, O: .32, S: .44 } as Record<string, number>)[atom.element] ?? .33 : .16;
-        parts.push(ball(atom.xyz, elementColor(atom.element), radius, atom.element + (i + 1)));
-      });
-      return parts;
-    },
+    description: molecule.name + ' (' + molecule.formula + '). Explicit NIST-sourced fixed coordinates and bond topology in Å. ' +
+      'Space-filling van der Waals volumes may overlap by design. Source: ' + molecule.source,
+    extent: Math.max(2.4, bound + .35), modes: moleculeModes,
+    at: (_frame, mode = 'ball-stick') => moleculePrimitives(molecule, [0, 0, 0], mode as MoleculeDisplay, molecule.formula + '-1'),
   };
 }
 export interface StructuredReactionSpecies extends StoichSpecies { structure: MolecularStructure | null }
-/** A reaction overview of fixed molecules; does not imply an atom-mapped mechanism or intermediates. */
 export function molecularReactionScene(reactants: StructuredReactionSpecies[], products: StructuredReactionSpecies[]): SceneSpec {
+  const layouts = [layoutMoleculeInstances(reactants), layoutMoleculeInstances(products)];
+  const extent = Math.max(2.5, ...layouts.flatMap((layout) =>
+    layout.map((p) => norm3(p.origin) + p.radius + .4)));
   return {
-    description: 'Fixed NIST reference molecular structures before and after a balanced reaction. Arrangement and transition are schematic; this is not a chemical mechanism.',
-    frames: 2, extent: 5,
-    frameLabel: (f) => f ? 'Products (validated fixed molecular geometries)' : 'Reactants (validated fixed molecular geometries)',
-    at(frame) {
-      const side = frame ? products : reactants;
-      const structures = side.flatMap((sp) => Array.from({ length: sp.coefficient }, () => sp.structure)).filter((x): x is MolecularStructure => x !== null);
-      const result: SciencePrimitive[] = [];
-      structures.forEach((structure, i) => {
-        const cx = (i - (structures.length - 1) / 2) * 2.6;
-        const cy = Math.sin(i * 2) * .12;
-        const offset = (p: V3): V3 => [p[0] + cx, p[1] + cy, p[2]];
-        for (const bond of structure.bonds) {
-          const a = structure.atoms[bond.a], b = structure.atoms[bond.b];
-          if (a && b) result.push(line(offset(a.xyz), offset(b.xyz), '#748aa0', 3));
-        }
-        structure.atoms.forEach((a, j) => result.push(ball(offset(a.xyz), elementColor(a.element), .17, structure.formula + ' ' + a.element + (j + 1))));
-      });
-      return result;
+    description: 'Molecules are separate, deterministic, collision-free bounding-sphere instances with explicit bonds and verified atomic inventories. ' +
+      'Before/after views are NOT reaction trajectories, intermediates or mechanisms. Select an atom for molecule identity.',
+    frames: 2, extent, modes: moleculeModes,
+    frameLabel: (f) => (f ? 'Products: ' : 'Reactants: ') + layouts[f].length + ' distinct molecules',
+    at(frame, mode = 'ball-stick') {
+      return layouts[frame].flatMap((place) => moleculePrimitives(place.molecule, place.origin, mode as MoleculeDisplay,
+        (frame ? 'product-' : 'reactant-') + place.id));
     },
   };
 }
