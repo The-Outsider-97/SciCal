@@ -1,6 +1,8 @@
 """Biology operations exposed by the API."""
 from __future__ import annotations
 
+import re
+
 import itertools
 import math
 from collections import Counter
@@ -553,6 +555,46 @@ def mutation_op(params: dict, s: Settings) -> dict:
                     classification=classification, model="reading-frame comparison, not phenotype prediction")
 
 
+
+def rna_processing_op(params: dict, s: Settings) -> dict:
+    """Educational eukaryotic splicing with explicitly supplied exon intervals."""
+    pre_rna, _ = S.clean(C.text(params, "sequence"), "rna")
+    if len(pre_rna) > 2000:
+        raise C.field_error("sequence", "RNA processing is limited to 2000 nucleotides")
+    spec = C.text(params, "exons", maxlen=500)
+    ranges: list[tuple[int, int]] = []
+    for token in spec.split(","):
+        match = re.fullmatch(r"\\s*(\\d+)\\s*-\\s*(\\d+)\\s*", token)
+        if not match:
+            raise C.field_error("exons", "Specify 1-based inclusive exon intervals such as 1-6,10-15")
+        a, b = map(int, match.groups())
+        if a < 1 or b < a or b > len(pre_rna):
+            raise C.field_error("exons", "Exon boundaries must be ordered and within the RNA sequence")
+        ranges.append((a, b))
+    if len(ranges) > 50:
+        raise C.field_error("exons", "At most 50 explicitly selected exons are supported")
+    ranges.sort()
+    if any(x[0] <= prev[1] for prev, x in zip(ranges, ranges[1:])):
+        raise C.field_error("exons", "Exons must not overlap")
+    mature = "".join(pre_rna[a - 1:b] for a, b in ranges)
+    introns = []
+    previous = 1
+    for a, b in ranges:
+        if a > previous:
+            introns.append({"start": previous, "end": a - 1, "length": a - previous})
+        previous = b + 1
+    if previous <= len(pre_rna):
+        introns.append({"start": previous, "end": len(pre_rna), "length": len(pre_rna) - previous + 1})
+    out = C.Out(s)
+    out.step("Exon concatenation", ", ".join(f"{a}-{b}" for a, b in ranges))
+    out.step("Spliced transcript", f"{len(pre_rna)} → {len(mature)} nucleotides")
+    out.warn("User-supplied exon positions define this model; SciCal did not predict splice sites, promoters, the 5′ cap or a poly(A) tail.")
+    return out.done(preMrna=pre_rna, matureMrna=mature,
+                    exons=[{"start": a, "end": b, "length": b - a + 1} for a, b in ranges],
+                    excludedRegions=introns, lengthBefore=len(pre_rna), lengthAfter=len(mature),
+                    model="explicit-interval eukaryotic RNA processing")
+
+
 OPS = {"sequence": sequence_analysis, "translate": translate_op, "orfs": orf_op, "restriction": restriction_op, "protein": protein_op,
        "hardy_weinberg": hardy_weinberg, "punnett": punnett, "growth": growth, "michaelis_menten": michaelis_menten, "lab_dilution": lab_dilution,
-       "genetic_code": genetic_code, "transcription": transcription_op, "protein_synthesis": protein_synthesis_op, "mutation": mutation_op}
+       "genetic_code": genetic_code, "transcription": transcription_op, "protein_synthesis": protein_synthesis_op, "mutation": mutation_op, "rna_processing": rna_processing_op}
