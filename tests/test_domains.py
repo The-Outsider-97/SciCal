@@ -278,6 +278,24 @@ class ScientificVisualizationContractTests(unittest.TestCase):
             self.assertEqual(totals, r["verification"][source])
         self.assertEqual(r["verification"]["atomsLeft"], r["verification"]["atomsRight"])
 
+    def test_mutation_substitution_and_frameshift(self):
+        syn = ok("biology", "mutation", sequence="ATGGAATAA", mode="substitute", position=6, base="G", frame="1")
+        self.assertEqual(syn["classification"], "synonymous")
+        self.assertEqual(syn["originalProtein"], syn["mutantProtein"])
+        nonsense = ok("biology", "mutation", sequence="ATGGAATAA", mode="substitute", position=4, base="T", frame="1")
+        self.assertEqual(nonsense["classification"], "nonsense")
+        self.assertEqual(nonsense["mutantCodon"], "UAA")
+        missense = ok("biology", "mutation", sequence="ATGGAATAA", mode="substitute", position=5, base="C", frame="1")
+        self.assertEqual(missense["classification"], "missense")
+        insertion = ok("biology", "mutation", sequence="ATGGAATAA", mode="insert", position=4, base="A", frame="1")
+        deletion = ok("biology", "mutation", sequence="ATGGAATAA", mode="delete", position=4, frame="1")
+        self.assertEqual(insertion["classification"], "frameshift")
+        self.assertEqual(deletion["classification"], "frameshift")
+        self.assertEqual(len(insertion["mutated"]), 10)
+        self.assertEqual(len(deletion["mutated"]), 8)
+        self.assertFalse(op("biology", "mutation", sequence="ATGGAATAA", mode="substitute", position=99, base="A")["ok"])
+        self.assertFalse(op("biology", "mutation", sequence="ATGGAATAA", mode="substitute", position=4, base="G")["ok"])
+
     def test_visual_sequence_is_validated_and_bounded(self):
         r = ok("biology", "sequence", sequence="ATGC", kind="dna")
         self.assertEqual(r["sceneSequence"], "ATGC")
