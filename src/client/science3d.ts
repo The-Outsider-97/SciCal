@@ -59,6 +59,7 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
   let raf = 0;
   let previous = 0;
   let accumulated = 0;
+  let infiniteLoop = false;
   let cam: Camera = cloneCamera(DEFAULT_CAMERA);
   let speed = 2;
   let picked = '';
@@ -107,6 +108,17 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
   });
   controls.append(reset, focusButton, exportBtn);
   const play = button('Play', () => toggle());
+  const loop = node('input');
+  loop.type = 'checkbox';
+  loop.setAttribute('aria-label', 'Infinite animation loop');
+  const loopLabel = node('label');
+  loopLabel.className = 'science-loop-toggle';
+  loopLabel.append(loop, document.createTextNode(' Infinite loop'));
+  loop.addEventListener('change', () => {
+    infiniteLoop = loop.checked;
+    // Enabling looping at a finished animation makes the normal Play action
+    // start a new cycle, but does not silently start or change playback.
+  });
   const back = button('◀', () => setFrame(frame - 1));
   const forward = button('▶', () => setFrame(frame + 1));
   const timeline = node('input');
@@ -154,7 +166,7 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
     });
     controls.append(display);
   }
-  if (total > 1) transport.append(play, back, timeline, forward, rate, status, button('Restart', () => {
+  if (total > 1) transport.append(play, back, timeline, forward, rate, loopLabel, status, button('Restart', () => {
     if (running) toggle();
     setFrame(0);
   }));
@@ -183,16 +195,21 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
     if (reducedMotion) animate(performance.now());
     else focusAnimation = requestAnimationFrame(animate);
   }
-  function setFrame(f: number): void {
-    frame = clamp(Math.trunc(f), 0, total - 1);
+  function setFrame(f: number, fromPlayback = false): void {
+    const requested = Math.trunc(f);
+    frame = fromPlayback && infiniteLoop ? ((requested % total) + total) % total :
+      clamp(requested, 0, total - 1);
     timeline.value = String(frame);
-    status.textContent = spec.frameLabel?.(frame) ?? ('Step ' + frame + '/' + (total - 1));
-    if (frame === total - 1 && running) toggle();
+    status.textContent = (spec.frameLabel?.(frame) ?? ('Step ' + frame + '/' + (total - 1))) +
+      (infiniteLoop ? ' · looping' : '');
+    if (fromPlayback && !infiniteLoop && frame === total - 1 && running) toggle();
+    if (!running) play.textContent = frame === total - 1 ? 'Continue' : 'Play';
     draw();
   }
   function toggle(): void {
+    if (!running && frame === total - 1) setFrame(0);
     running = !running;
-    play.textContent = running ? 'Pause' : 'Play';
+    play.textContent = running ? 'Pause' : (frame === total - 1 ? 'Continue' : 'Play');
     previous = 0;
     accumulated = 0;
     if (running) raf = requestAnimationFrame(tick);
@@ -207,7 +224,7 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
       if (accumulated >= interval) {
         const frames = Math.floor(accumulated / interval);
         accumulated -= frames * interval;
-        setFrame(frame + frames);
+        setFrame(frame + frames, true);
       }
     }
     previous = t;
