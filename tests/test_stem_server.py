@@ -20,7 +20,8 @@ def start(tmp, agents, env_extra):
     port = free_port()
     log = open(Path(tmp) / f"server-{port}.log", "w")
     proc = subprocess.Popen([sys.executable, "-m", "scical", "--no-browser", "--port", str(port), "--token", TOKEN, "--data-dir", tmp + f"/data{port}", "--output-dir", tmp + "/out",
-                             "--agents", agents, "--workers", "2", "--timeout", "10"], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, env={**os.environ, **env_extra})
+                             "--agents", agents, "--workers", "2", "--timeout", "10"], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, env={**os.environ, **env_extra},
+                             creationflags=TS.SERVER_PROCESS_FLAGS)
     return port, proc, log
 
 
@@ -43,10 +44,11 @@ class Base(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        cls.proc.terminate()
-        cls.proc.wait(timeout=10)
-        cls.log.close()
-        cls.tmp.cleanup()
+        try:
+            TS.stop_test_server(cls.proc)
+        finally:
+            cls.log.close()
+            cls.tmp.cleanup()
 
     @classmethod
     def raw(cls, *a, **kw):

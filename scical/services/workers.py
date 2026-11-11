@@ -105,21 +105,60 @@ class Pool:
         self.start_failures = 0
         self.stats = {"tasks": 0, "timeouts": 0, "cancelled": 0, "restarts": 0}
         self._spawn_thread: threading.Thread | None = None
+        self._spawn_gate = threading.Lock()
+        self._spawners: set[threading.Thread] = set()
 
     # ------------------------------------------------------------------ lifecycle
+    def _enqueue_new_worker(self) -> None:
+        """Never publish a newly spawned worker after shutdown has begun."""
+        with self._spawn_gate:
+            if self.closed:
+                return
+        worker = Worker(self.ctx)
+        with self._spawn_gate:
+            if self.closed:
+                dispose = True
+            else:
+                self.idle.put(worker)
+                dispose = False
+        if dispose:
+            worker.kill()
+
+    def _launch_spawner(self, action: Any, name: str) -> threading.Thread | None:
+        def run() -> None:
+            try:
+                action()
+            finally:
+                with self._spawn_gate:
+                    self._spawners.discard(threading.current_thread())
+
+        with self._spawn_gate:
+            if self.closed:
+                return None
+            thread = threading.Thread(target=run, name=name, daemon=True)
+            self._spawners.add(thread)
+            thread.start()
+            return thread
+
     def start(self) -> "Pool":
-        """Start the workers in the background so the first request does not pay for importing SymPy."""
+        """Start workers asynchronously; track spawners so shutdown can join them."""
         def go() -> None:
             for _ in range(self.size):
-                if self.closed:
-                    return
-                self.idle.put(Worker(self.ctx))
-        self._spawn_thread = threading.Thread(target=go, name="scical-pool-start", daemon=True)
-        self._spawn_thread.start()
+                self._enqueue_new_worker()
+        self._spawn_thread = self._launch_spawner(go, "scical-pool-start")
         return self
 
     def close(self) -> None:
-        self.closed = True
+        # Mark closed before waiting. Spawning threads either publish before
+        # shutdown drains idle or destroy workers they created while closing.
+        with self._spawn_gate:
+            if self.closed:
+                return
+            self.closed = True
+            spawners = list(self._spawners)
+        for thread in spawners:
+            if thread is not threading.current_thread():
+                thread.join(timeout=10.0)
         while True:
             try:
                 self.idle.get_nowait().kill()
@@ -160,9 +199,11 @@ class Pool:
             return w
 
     def _replace(self) -> None:
-        if not self.closed:
+        with self._spawn_gate:
+            if self.closed:
+                return
             self.stats["restarts"] += 1
-            threading.Thread(target=lambda: self.idle.put(Worker(self.ctx)), daemon=True).start()
+        self._launch_spawner(self._enqueue_new_worker, "scical-pool-replace")
 
     def submit(self, task: dict[str, Any], job_id: str, timeout: float | None = None) -> dict[str, Any]:
         timeout = timeout or self.default_timeout

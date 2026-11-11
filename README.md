@@ -25,6 +25,22 @@ python -m scical                         # from this folder; opens your browser
 The STEM Lab and STEM checks use SLAI's STEM agent, which also needs `scipy` (and `colorama` 0.4.6 or newer on Windows) in the same Python environment: `pip install scipy colorama`. Without them SciCal works as before and the STEM pages say what is missing.
 
 `python run_scical.py` does the same. The web client is shipped prebuilt in `dist/`, so Node is only needed if you change `src/`. If you do, run `npm install` once (it installs TypeScript) and then `npm run build`; the build compiles into a scratch folder first and only replaces `dist/` when that succeeded, so a failed build can no longer leave you with a blank page.
+### Windows development and tests
+
+From the SciCal repository (not the parent SLAI directory), install Node development dependencies **before** running TypeScript tests or building source changes:
+
+```powershell
+cd G:\GAIA\AI\SLAI\applications\SciCal
+npm.cmd install --include=dev --no-audit --no-fund
+npm.cmd run typecheck
+npm.cmd test
+npm.cmd run build
+python -m unittest discover -s tests -v
+python -m scical
+```
+
+If `tsc` or `tsx` is not recognized, `node_modules/` is missing or dev dependencies were omitted. Verify with `npm.cmd ls typescript tsx`. An unsuccessful build leaves the existing `dist/` untouched; running SciCal afterward may launch the **previously built UI**. The Python tests start real worker-backed HTTP servers and attempt graceful termination on Windows so worker processes release temporary server logs before cleanup.
+
 SciCal listens on `127.0.0.1:8768` only and opens the page with a one-time access token.
 
 | Option | Meaning |
