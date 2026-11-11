@@ -6,7 +6,7 @@ import { nowIso, newEntryId } from '../../core/session.js';
 import type { Entry, FormOp } from '../../core/types.js';
 import { debounce, isRecord } from '../../core/util.js';
 import { api, ApiError } from '../api.js';
-import { dnaScene, rnaScene, transcriptionScene, translationScene, reactionScene, scientificScene, type StoichSpecies, type TranslationStep, type ScienceScene, type SceneSpec } from '../science3d.js';
+import { dnaScene, rnaScene, transcriptionScene, translationScene, mutationScene, reactionScene, scientificScene, type StoichSpecies, type TranslationStep, type ScienceScene, type SceneSpec } from '../science3d.js';
 import { h, replace } from '../dom.js';
 import { buildForm, type FormHandle } from '../domain-form.js';
 import { renderResult, type ResultCtx } from '../domain-results.js';
@@ -35,6 +35,8 @@ function scientificView(domain: string, operation: string, result: R): ScienceSc
     else if (operation === 'translate' && typeof result.sceneRna === 'string') spec = rnaScene(result.sceneRna);
     else if (operation === 'transcription' && typeof result.coding === 'string' && typeof result.mrna === 'string')
       spec = transcriptionScene(result.coding, result.mrna);
+    else if (operation === 'mutation' && typeof result.original === 'string' && typeof result.mutated === 'string')
+      spec = mutationScene(result.original, result.mutated, result.kind === 'RNA' ? 'RNA' : 'DNA');
     else if (operation === 'protein_synthesis' && typeof result.mrna === 'string' && Array.isArray(result.codons)) {
       const cs: TranslationStep[] = result.codons.filter(isRecord).map((c) => ({
         codon: String(c.codon ?? ''), aa: String(c.aa ?? 'X'), anticodon: typeof c.anticodon === 'string' ? c.anticodon : undefined,
