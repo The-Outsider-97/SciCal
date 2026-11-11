@@ -24,6 +24,7 @@ object EngineHost {
     private const val TAG = "SciCalEngine"
     private const val PREFERRED_PORT = 47868          // keeps the web view's storage address stable between runs; any free port if taken
     private const val CLIENT_ASSET_DIR = "scical_client"
+    private const val SLAI_ASSET_DIR = "scical_slai"     // the part of SLAI the app carries: the STEM agent and the SLDC/SGEO/SDRW exports
 
     @Volatile private var url: String? = null
     @Volatile private var failure: String? = null
@@ -41,12 +42,14 @@ object EngineHost {
         try {
             if (!Python.isStarted()) Python.start(AndroidPlatform(activity.applicationContext))
             val client = File(activity.filesDir, "client")
-            syncAssets(activity.assets, activity.filesDir, client)
+            syncAssets(activity.assets, activity.filesDir, CLIENT_ASSET_DIR, "client.version", client, "index.html")
+            val slai = File(activity.filesDir, "slai")          // writable: SLAI's agents write their logs relative to it
+            syncAssets(activity.assets, activity.filesDir, SLAI_ASSET_DIR, "slai.version", slai, "src/agents/stem_agent.py")
             val data = File(activity.filesDir, "scical-data")
             val exports = activity.getExternalFilesDir("Documents") ?: File(activity.filesDir, "exports")
             val token = ByteArray(24).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
             val embed = Python.getInstance().getModule("scical.embed")
-            val info = embed.callAttr("start", data.absolutePath, exports.absolutePath, token, PREFERRED_PORT, client.absolutePath, "thread")
+            val info = embed.callAttr("start", data.absolutePath, exports.absolutePath, token, PREFERRED_PORT, client.absolutePath, "thread", slai.absolutePath)
             url = info.callAttr("get", "url").toString()
             Log.i(TAG, "engine ready")
         } catch (e: Throwable) {
@@ -55,13 +58,13 @@ object EngineHost {
         }
     }
 
-    /** Copy the web client out of the APK (the engine serves files from disk). Done again only when the app version changed. */
-    private fun syncAssets(assets: AssetManager, filesDir: File, target: File) {
-        val stamp = assets.open("$CLIENT_ASSET_DIR/version.txt").bufferedReader().use { it.readText().trim() }
-        val marker = File(filesDir, "client.version")
-        if (marker.isFile && marker.readText() == stamp && File(target, "index.html").isFile) return
+    /** Copy a folder out of the APK (the engine reads files from disk). Done again only when the app version changed. */
+    private fun syncAssets(assets: AssetManager, filesDir: File, assetDir: String, markerName: String, target: File, probe: String) {
+        val stamp = assets.open("$assetDir/version.txt").bufferedReader().use { it.readText().trim() }
+        val marker = File(filesDir, markerName)
+        if (marker.isFile && marker.readText() == stamp && File(target, probe).isFile) return
         target.deleteRecursively()
-        copyTree(assets, CLIENT_ASSET_DIR, target)
+        copyTree(assets, assetDir, target)
         marker.writeText(stamp)
     }
 

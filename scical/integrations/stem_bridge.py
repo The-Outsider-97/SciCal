@@ -141,14 +141,9 @@ class StemBridge:
         link = self.link
         if link is None:
             raise StemUnavailable("SciCal is not connected to a SLAI checkout.")
-        link.load()
-        if not link.documaster_ok:
-            raise StemUnavailable(f"The agent gateway is not available: {link.documaster_reason}")
-        gw = link.services.agents
-        gw._init_factory()
-        if gw.factory is None:
-            raise StemUnavailable(gw.fatal or "SLAI's AgentFactory is not available.")
-        return gw.factory.create("stem", shared_memory=gw.shared_memory)
+        if link.root is None:
+            raise StemUnavailable("The SLAI folder was not found (set SLAI_ROOT or pass --slai-root).")
+        return link.create_stem_agent()
 
     @staticmethod
     def _explain_failure(exc: Exception) -> str:

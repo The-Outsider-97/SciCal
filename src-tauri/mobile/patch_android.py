@@ -50,7 +50,7 @@ def main() -> int:
     if not (APP / "dist" / "index.html").is_file():
         fail("the web client is not built. Run 'npm run build' in the SciCal folder first.")
 
-    # 1. the Python code, the web client and the host code
+    # 1. the Python code, the web client, a part of SLAI and the host code
     py = app / "src" / "main" / "python"
     shutil.rmtree(py / "scical", ignore_errors=True)
     shutil.copytree(APP / "scical", py / "scical", ignore=IGNORE)
@@ -64,6 +64,16 @@ def main() -> int:
     version = re.search(r'"version":\s*"([^"]+)"', (TAURI / "tauri.conf.json").read_text(encoding="utf-8")).group(1)
     stamp = f"{version}+{int((APP / 'dist' / 'index.html').stat().st_mtime)}"
     (assets / "version.txt").write_text(stamp, encoding="utf-8")
+    slai_assets = app / "src" / "main" / "assets" / "scical_slai"           # SLAI's STEM agent and the SLDC/SGEO/SDRW exports (stage_slai.py)
+    sys.path.insert(0, str(HERE))
+    from stage_slai import SLAI, stage                                      # noqa: E402
+    try:
+        count = stage(SLAI, slai_assets)
+    except FileNotFoundError as exc:
+        fail(f"{exc}. Run this script from SciCal inside the SLAI checkout (applications/SciCal).")
+    newest = max(int(p.stat().st_mtime) for p in slai_assets.rglob("*") if p.is_file())
+    (slai_assets / "version.txt").write_text(f"{stamp}+slai{newest}", encoding="utf-8")
+    print(f"{count} SLAI files copied into the app (the STEM agent and the exports).")
     kotlin = app / "src" / "main" / "java" / Path(*pkg.split("."))
     kotlin.mkdir(parents=True, exist_ok=True)
     shutil.copy(HERE / "android" / "EngineHost.kt", kotlin / "EngineHost.kt")
@@ -108,6 +118,9 @@ chaquopy {{
             install("sympy>=1.12")
             install("mpmath>=1.3")
             install("numpy")
+            install("pyyaml")           // SLAI's agents read their settings from YAML
+            install("colorama")
+            install("psutil")
         }}
         extractPackages("scical")      // the engine reads its data files (elements, constants) from disk
     }}

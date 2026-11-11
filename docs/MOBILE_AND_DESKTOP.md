@@ -30,7 +30,8 @@ no Windows, and iOS needs a Mac. So, plainly:
 | `patch_android.py` and `patch_ios.py` | Run against **mock copies** of Tauri's generated projects, twice each (so re-running is safe) |
 | Rust shell (`src-tauri/src`), `tauri.conf.json`, resources, capabilities | **Not compiled.** Written against the Tauri 2 API; expect to fix small compile errors on the first build |
 | PyInstaller freeze of the engine | **Not run** (PyInstaller could not be installed here) |
-| Chaquopy build, Kotlin host | **Not built** |
+| SLAI's STEM agent with only Android-style Python (no SciPy, no torch), through SciCal's server: agent available, a STEM check answers "agrees" | **Tested** here (NumPy, PyYAML, colorama, psutil, mpmath only) |
+| Chaquopy build, Kotlin host | **Not built**; Chaquopy having wheels for NumPy, PyYAML and psutil on Python 3.13 is assumed, not checked |
 | Embedded CPython on iOS, Objective-C host | **Not built**; this is the least certain part |
 | Anything on a real device | **Not tried** |
 
@@ -43,8 +44,13 @@ under "If something does not build" at the end.
   worker processes, so calculations run in threads. A runaway calculation in pure Python (SymPy) is stopped at once; one that is stuck
   inside a single huge native operation (an enormous integer power) cannot be, and after three such cases SciCal asks you to restart
   it. There is also no memory cap. Both are the price of running inside the app.
-* **No SLAI assistant.** The optional SLAI agents, the SLDC export and the STEM facade need a SLAI checkout on the same machine, so
-  they are off on phones. Everything else works the same.
+* **SLAI on the phone.** The Android app carries the part of SLAI that can run there, as SLAI's own unchanged source (about 250 files, copied from
+  your checkout when you run `patch_android.py`): **the STEM agent** (STEM Lab and the STEM checks) and **the SLDC / SGEO / SDRW export modules**.
+  The agent is created directly (`STEMAgent(SharedMemory(), None)`, as StringLab does) and needs only NumPy, PyYAML, colorama and psutil. Android's
+  Python has no SciPy or jsonschema, so two small stand-ins (`scical/_shims`) are used: the three SciPy special functions the agent calls are computed
+  with mpmath (they match SciPy to about 1e-12, tested) and the jsonschema stand-in refuses to validate rather than pretend. What stays off
+  on a phone is what needs torch or a language model: the language, privacy and quality agents (the text assistant), as on any machine without them.
+  `stage_slai.py` lists exactly what is copied, and stops if your checkout lacks any of it.
 * **Saving files.** On iOS the Save/PNG buttons open the share sheet (Save to Files, Mail, …). On Android the system web view cannot
   save a downloaded blob, so exports are written to the app's Documents folder
   (`Android/data/app.slai.scical/files/Documents`), which is reachable from a computer or a file manager that shows app folders.

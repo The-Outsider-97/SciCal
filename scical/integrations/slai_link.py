@@ -157,6 +157,19 @@ class SlaiLink:
         pkg = self.root / "applications" / "Documaster" / "slai"
         return pkg if (pkg / "__init__.py").is_file() else None
 
+    def create_stem_agent(self) -> Any:
+        """SLAI's STEM agent, created directly from the checkout (the way StringLab does it): ``STEMAgent(SharedMemory(), None)``.
+        It needs only NumPy, SciPy and SLAI's own source, so it also works where the full agent factory (and torch) is not available."""
+        if self.root is None:
+            raise DependencyMissing("SciCal could not find the SLAI folder (set SLAI_ROOT or pass --slai-root).")
+        activate(self.root)
+        try:
+            os.chdir(str(self.root))                       # SLAI's agents write their logs relative to the working directory
+        except OSError:
+            pass
+        memory = importlib.import_module("src.agents.collaborative.shared_memory").SharedMemory()
+        return importlib.import_module("src.agents.stem_agent").STEMAgent(memory, None)
+
     def load(self) -> "SlaiLink":
         with self._lock:
             if self._loaded:

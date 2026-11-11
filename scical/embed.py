@@ -1,8 +1,7 @@
 """Start SciCal inside another program: the Android and iOS apps (and anything else that already hosts a Python interpreter).
 
 The app calls :func:`start` once, gets back the loopback address and the access token, and points its web view at ``url``. Nothing here
-opens a window or a browser. Calculations run in threads (there are no worker processes on these platforms), the SLAI assistant is off,
-and the server listens on the loopback interface only, exactly as ``python -m scical`` does.
+opens a window or a browser. Calculations run in threads (there are no worker processes on these platforms), and the server listens on the loopback interface only, exactly as ``python -m scical`` does.
 """
 from __future__ import annotations
 
@@ -14,8 +13,13 @@ _state: dict[str, Any] = {}
 _lock = threading.Lock()
 
 
-def start(data_dir: str, output_dir: str, token: str | None = None, port: int = 0, client_dir: str | None = None, worker_mode: str = "thread") -> dict[str, Any]:
-    """Start the server in a background thread (once; later calls return the same address). Returns ``{"port", "token", "url"}``."""
+def start(data_dir: str, output_dir: str, token: str | None = None, port: int = 0, client_dir: str | None = None, worker_mode: str = "thread",
+          slai_root: str | None = None) -> dict[str, Any]:
+    """Start the server in a background thread (once; later calls return the same address). Returns ``{"port", "token", "url"}``.
+
+    ``slai_root`` is a folder holding the part of SLAI the app carries (``stage_slai.py``): SLAI's STEM agent and the SLDC/SGEO/SDRW exports then
+    work. SciPy and jsonschema are not available for Android's Python, so small stand-ins (``scical/_shims``) go at the end of ``sys.path``;
+    a real installation of either would win."""
     with _lock:
         if _state:
             return dict(_state["info"])
@@ -28,7 +32,15 @@ def start(data_dir: str, output_dir: str, token: str | None = None, port: int = 
         s.data_dir = Path(data_dir).expanduser().resolve()
         s.output_dir = Path(output_dir).expanduser().resolve()
         s.output_dir.mkdir(parents=True, exist_ok=True)
-        s.agents = "none"
+        if slai_root:
+            import sys
+            s.slai_root = Path(slai_root).expanduser().resolve()
+            shims = str(Path(__file__).resolve().parent / "_shims")
+            if shims not in sys.path:
+                sys.path.append(shims)
+            s.agents = "auto"
+        else:
+            s.agents = "none"
         s.worker_mode = worker_mode
         s.open_browser = False
         if token:
