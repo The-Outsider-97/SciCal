@@ -493,3 +493,46 @@ export function rnaProcessingScene(preMrna: string, matureMrna: string): SceneSp
     at: (f) => rnaScene(f ? matureMrna : preMrna).at(0),
   };
 }
+
+
+export type OrbitalShape = 's' | 'p' | 'd' | 'f';
+/** Real zonal spherical harmonic angular-symmetry isosurfaces (m=0). Radial scale is illustrative. */
+export function orbitalAngularScene(orbital: OrbitalShape): SceneSpec {
+  const label: Record<OrbitalShape, string> = { s: 's (l=0, m=0)', p: 'p_z (l=1, m=0)', d: 'd_z² (l=2, m=0)', f: 'f_z³ (l=3, m=0)' };
+  const angular = (z: number): number => {
+    if (orbital === 's') return 1;
+    if (orbital === 'p') return z;
+    if (orbital === 'd') return (3 * z * z - 1) / 2;
+    return (5 * z * z * z - 3 * z) / 2;
+  };
+  return {
+    description: 'Qualitative real spherical-harmonic angular isosurface: ' + label[orbital] +
+      '. Colors denote opposite wavefunction phase, not electric charge. Radial wavefunction, electron occupancy and actual multi-electron density are NOT calculated.',
+    extent: 2.2,
+    at: () => {
+      const pts: SciencePrimitive[] = [];
+      const count = 1100;
+      for (let i = 0; i < count; i++) {
+        const z = 1 - 2 * (i + .5) / count;
+        const phi = i * 2.399963229728653;
+        const xy = Math.sqrt(1 - z * z);
+        const ang = angular(z);
+        const radius = 1.5 * Math.sqrt(Math.abs(ang));
+        if (radius < .07) continue;
+        const p = point(radius * xy * Math.cos(phi), radius * xy * Math.sin(phi), radius * z);
+        pts.push(ball(p, ang < 0 ? '#be557c' : '#448fd5', .025));
+      }
+      return pts;
+    },
+  };
+}
+export function nucleusScene(z: number, mass: number | null, configuration: string): SceneSpec {
+  const full = atomScene(z, mass, 0, configuration);
+  return {
+    description: 'Schematic nuclear composition. ' + (mass === null ? 'Neutron count is unavailable: only known protons shown.' :
+      z + ' protons and ' + (mass - z) + ' neutrons. Spatial nucleon positions are not measured nuclear states.'),
+    extent: 1.2,
+    at: () => full.at(0).filter((primitive) =>
+      primitive.kind === 'ball' && (primitive.color === '#d94b51' || primitive.color === '#8c959f')),
+  };
+}
