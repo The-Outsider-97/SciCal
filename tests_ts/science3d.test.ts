@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { atomScene, electronShells, dnaScene, rnaScene, nucleotideColor, transcriptionScene, translationScene, reactionScene } from '../src/client/science3d.js';
+import { atomScene, electronShells, dnaScene, rnaScene, nucleotideColor, transcriptionScene, translationScene, reactionScene, moleculeScene, molecularReactionScene } from '../src/client/science3d.js';
 
 test('scientific color mapping distinguishes all RNA bases and DNA thymine', () => {
   const bases = ['A', 'U', 'C', 'G', 'T'];
@@ -59,4 +59,28 @@ test('stoichiometric atom totals are represented exactly for supported small sce
   const count = (f: number) => scene.at(f).filter((p) => p.kind === 'ball').length;
   assert.equal(count(0), 6);
   assert.equal(count(1), 6);
+});
+
+
+test('source-backed molecules show explicit bond topology without inventing bonds', () => {
+  const water = {
+    formula: 'H2O', name: 'Water', charge: 0,
+    source: 'https://cccbdb.nist.gov/', atoms: [
+      { element: 'O', xyz: [0, 0, .1173] as [number, number, number] },
+      { element: 'H', xyz: [0, .7572, -.4692] as [number, number, number] },
+      { element: 'H', xyz: [0, -.7572, -.4692] as [number, number, number] },
+    ], bonds: [{ a: 0, b: 1, order: 1 }, { a: 0, b: 2, order: 1 }],
+  };
+  const render = moleculeScene(water);
+  assert.equal(render.frames, 2);
+  assert.equal(render.at(0).filter((p) => p.kind === 'ball').length, 3);
+  assert.equal(render.at(0).filter((p) => p.kind === 'line').length, 2);
+  assert.equal(render.at(1).filter((p) => p.kind === 'line').length, 0);
+  assert.match(render.description, /reference geometry/i);
+  const reaction = molecularReactionScene(
+    [{ species: 'H2O', coefficient: 1, atoms: { H: 2, O: 1 }, structure: water }],
+    [{ species: 'H2O', coefficient: 1, atoms: { H: 2, O: 1 }, structure: water }],
+  );
+  assert.equal(reaction.at(0).filter((p) => p.kind === 'ball').length, 3);
+  assert.equal(reaction.at(1).filter((p) => p.kind === 'ball').length, 3);
 });
