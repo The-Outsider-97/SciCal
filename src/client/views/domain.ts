@@ -48,7 +48,17 @@ function scientificView(domain: string, operation: string, result: R): ScienceSc
       species: String(s.species ?? ''), coefficient: Math.max(0, Number(s.coefficient ?? 0)),
       atoms: Object.fromEntries(Object.entries(isRecord(s.atoms) ? s.atoms : {}).filter(([_, n]) => Number.isInteger(Number(n)) && Number(n) >= 0).map(([k, n]) => [k, Number(n)])),
     }));
-    spec = reactionScene(clean(inventory.reactants), clean(inventory.products));
+    const reactants = clean(inventory.reactants);
+    const products = clean(inventory.products);
+    const sides = [...reactants, ...products];
+    const total = (rows: StoichSpecies[]): number => rows.reduce((sum, sp) =>
+      sum + sp.coefficient * Object.values(sp.atoms).reduce((n, amount) => n + amount, 0), 0);
+    // The primitive scene has a finite capacity: never show a truncated scene as an exact inventory.
+    if (sides.every((sp) => Number.isInteger(sp.coefficient) && sp.coefficient >= 0 && sp.coefficient <= 12 &&
+      Object.values(sp.atoms).every((n) => n <= 24)) &&
+      total(reactants) <= 240 && total(products) <= 240) {
+      spec = reactionScene(reactants, products);
+    }
   }
   if (!spec) return null;
   return scientificScene(spec);
