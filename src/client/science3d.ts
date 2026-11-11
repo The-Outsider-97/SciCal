@@ -210,36 +210,71 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
     }
     const objects = cacheParts;
     lastPick = [];
-    const drawn = objects.map((part) => {
-      if (part.kind === 'ball') {
-        const p = project(part.p);
-        const r = Math.max(1.2, part.r / extent * .46 * Math.min(w, h) * cam.zoom * (cam.projection === 'perspective' ? 3.2 / Math.max(.2, p.depth) : 1));
-        return { part, depth: p.depth, p, r };
-      }
-      return { part, depth: (project(part.a).depth + project(part.b).depth) / 2 };
-    }).sort((a, b) => b.depth - a.depth);
+    const radiusPx = (radius: number, depth: number): number =>
+      Math.max(1.6, radius / extent * .46 * Math.min(w, h) * cam.zoom *
+        (cam.projection === 'perspective' ? 3.2 / Math.max(.2, depth) : 1));
+    const drawn = objects.map((part) => ({
+      part,
+      depth: part.kind === 'ball' ? project(part.p).depth :
+        (project(part.a).depth + project(part.b).depth) / 2,
+    })).sort((a, b) => b.depth - a.depth);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
     for (const item of drawn) {
       const shape = item.part;
-      if (shape.kind === 'line') {
+      if (shape.kind === 'line' || shape.kind === 'cylinder') {
         const a = project(shape.a), b = project(shape.b);
-        ctx.strokeStyle = shape.color;
-        ctx.lineWidth = shape.width ?? 2;
+        ctx.lineWidth = shape.kind === 'cylinder' ?
+          Math.max(2.4, radiusPx(shape.r, item.depth) * 2) : (shape.width ?? 2);
+        if (shape.kind === 'cylinder') {
+          // Projected solid rod with a subtle axial highlight; capped endpoints meet adjoining tubes.
+          const shade = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+          shade.addColorStop(0, shape.color);
+          shade.addColorStop(.5, shape.color);
+          shade.addColorStop(1, shape.color);
+          ctx.strokeStyle = shade;
+        } else ctx.strokeStyle = shape.color;
         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        if (shape.kind === 'cylinder' && shape.label) {
+          const x = (a.x + b.x) / 2, y = (a.y + b.y) / 2;
+          const position: V3 = [
+            (shape.a[0] + shape.b[0]) / 2,
+            (shape.a[1] + shape.b[1]) / 2,
+            (shape.a[2] + shape.b[2]) / 2,
+          ];
+          const selection: SceneSelection = {
+            id: shape.id ?? shape.label, label: shape.label, type: shape.kind, position, group: shape.group,
+          };
+          lastPick.push({ x, y, r: Math.max(8, ctx.lineWidth), depth: item.depth, selection });
+          if (picked === selection.id) {
+            ctx.lineWidth += 2;
+            ctx.strokeStyle = '#ffffff';
+            ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+          }
+        }
       } else {
         const p = project(shape.p);
-        const r = 'r' in item && item.r ? item.r : 3;
+        const r = radiusPx(shape.r, p.depth);
         const grad = ctx.createRadialGradient(p.x - r * .28, p.y - r * .32, r * .05, p.x, p.y, r);
-        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0, '#f6f9fe');
         grad.addColorStop(.24, shape.color);
-        grad.addColorStop(1, '#273b4b');
+        grad.addColorStop(1, '#263747');
         ctx.fillStyle = grad;
         ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
-        if (shape.label && r >= 6) {
-          ctx.fillStyle = '#fff';
-          ctx.font = 'bold ' + clamp(r * .9, 9, 15) + 'px system-ui';
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(shape.label.slice(0, 3), p.x, p.y);
-          lastPick.push({ x: p.x, y: p.y, r, depth: p.depth, label: shape.label });
+        if (picked && picked === (shape.id ?? shape.label)) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+        if (shape.label) {
+          if (r >= 6.5) {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold ' + clamp(r * .9, 9, 15) + 'px system-ui';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(shape.label.slice(0, 3), p.x, p.y);
+          }
+          lastPick.push({ x: p.x, y: p.y, r: Math.max(7, r), depth: p.depth,
+            selection: { id: shape.id ?? shape.label, label: shape.label, type: shape.kind, position: shape.p, group: shape.group } });
         }
       }
     }
