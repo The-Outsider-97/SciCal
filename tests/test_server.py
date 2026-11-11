@@ -95,7 +95,7 @@ class ServerTests(unittest.TestCase):
 
     def test_cookie_is_httponly_and_samesite(self):
         self.assertIn("HttpOnly", self.set_cookie)
-        self.assertIn("SameSite=Strict", self.set_cookie)
+        self.assertIn("SameSite=Lax", self.set_cookie)
         self.assertIn("Path=/", self.set_cookie)
 
     def test_foreign_host_header_is_refused(self):                          # DNS rebinding

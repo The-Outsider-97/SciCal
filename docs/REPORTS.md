@@ -26,7 +26,7 @@ This is the honest state of SciCal: what was built, how it was checked, what cou
 SciCal follows the pattern of the other SLAI applications (Reader was the template).
 
 * **Loopback only.** The service binds to `127.0.0.1`/`::1`; any other `--host` is refused at start-up.
-* **Access token.** A random token is placed in the URL once, exchanged for an `HttpOnly; SameSite=Strict` cookie (`slai_scical_token`) and then dropped from the address bar. Requests without the cookie get 403.
+* **Access token.** A random token is placed in the URL once, exchanged for an `HttpOnly; SameSite=Lax` cookie (`slai_scical_token`; Lax so the desktop app can open the link from its own start page, while changes still need the marker header and a matching Origin) and then dropped from the address bar. Requests without the cookie get 403.
 * **Host and Origin checks** against DNS-rebinding and cross-site requests; mutating requests also need the `X-SLAI-SciCal` header, which a cross-origin page cannot set without a pre-flight that is never granted.
 * **Strict CSP**: no inline script or style, no `eval`, no third-party origins. The client never uses `innerHTML` (it builds DOM nodes), so a result containing markup is shown as text.
 * **Input limits:** bodies over their route's limit get 413; expressions, matrix sizes, list lengths, plot points, exponents and factorials are capped; session ids must be 16 hex characters; worksheet entries are re-validated on the way in and out; preferences are checked against a schema and unknown or invalid values are rejected.
@@ -36,7 +36,7 @@ SciCal follows the pattern of the other SLAI applications (Reader was the templa
 
 ## 3. Test results
 
-Latest full run (cloud, Python 3.13): Python 412 tests (62 skipped where there is no SLAI checkout, no live STEM agent or an older `jsonschema`); TypeScript 79 / 79 and `tsc --noEmit` clean; browser 38 / 38 (Chromium; includes motion, reduced motion and the phone layout). The table below is the earlier, per-suite record.
+Latest full run (cloud, Python 3.13): Python 412 tests (62 skipped where there is no SLAI checkout, no live STEM agent or an older `jsonschema`); TypeScript 79 / 79 and `tsc --noEmit` clean; browser 39 / 39 (Chromium; includes motion, reduced motion and the phone layout). The table below is the earlier, per-suite record.
 
 | Suite | Where it ran | Result |
 | --- | --- | --- |

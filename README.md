@@ -71,7 +71,7 @@ docs/                      USER_GUIDE.md, REPORTS.md, screenshots/
 
 ```
 PYTHONPATH=. python -m unittest discover -s tests          # 412 engine, domain, finance, constants, 3D, export, server, thread-pool and launcher tests
-PYTHONPATH=. python -m unittest discover -s tests_e2e      # 38 browser tests (needs Playwright + Chromium)
+PYTHONPATH=. python -m unittest discover -s tests_e2e      # 39 browser tests (needs Playwright + Chromium)
 npm install && npm test && npm run typecheck               # 79 TypeScript tests, strict type check
 npm run build                                              # rebuild dist/
 ```

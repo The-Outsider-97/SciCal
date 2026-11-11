@@ -1,6 +1,6 @@
 """The local web server. It listens on the loopback interface only and treats every request as untrusted.
 
-* **Who may ask**: a random token, shown only in the link printed at start-up, is exchanged for an HttpOnly, SameSite=Strict cookie.
+* **Who may ask**: a random token, shown only in the link printed at start-up, is exchanged for an HttpOnly, SameSite=Lax cookie. (Lax rather than Strict so the desktop app, whose window opens the link from its own start page, is not locked out: a Strict cookie is not sent when a cross-site page starts the navigation. Lax cookies are still never sent on cross-site subresource requests, frames or POSTs, and changes also need the marker header and a matching Origin.)
   Every other request needs that cookie. Another program on this computer or a web page open in the browser cannot read the token.
 * **Which page may ask**: the ``Host`` header must be this server (defeats DNS rebinding); changes (POST/PUT/PATCH/DELETE) also need the
   ``X-SLAI-SciCal`` header and, when the browser sends an ``Origin``, that origin must be this server.
@@ -123,7 +123,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(self._error(Unauthorized("This address is not allowed")))
             if path == "/" and "token" in query:                  # token exchange: /?token=...  ->  cookie, then a clean URL
                 if hmac.compare_digest(query["token"].encode(), self.server.app.settings.token.encode()):
-                    cookie = f"{COOKIE}={self.server.app.settings.token}; Path=/; HttpOnly; SameSite=Strict"
+                    cookie = f"{COOKIE}={self.server.app.settings.token}; Path=/; HttpOnly; SameSite=Lax"
                     return self._send(Response(302, b"", "text/plain", {"Location": "/", "Set-Cookie": cookie}))
                 return self._send(Response(403, LOCKED_PAGE, "text/html; charset=utf-8"))
             if not self._authorised():
