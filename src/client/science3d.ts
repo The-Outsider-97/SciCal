@@ -738,8 +738,9 @@ export function mutationScene(original: string, mutated: string, kind: 'DNA' | '
   const len = Math.max(original.length, mutated.length);
   const source = (seq: string): SceneSpec => kind === 'RNA' ? rnaScene(seq) : dnaScene(seq);
   return {
-    description: 'Before/after ' + kind + ' nucleotide sequence comparison. Helix geometry is schematic; a mutation does not establish a phenotype.',
-    frames: 2, extent: Math.max(2.45, len * .34 * .35), paletteToggle: true,
+    description: 'Before/after ' + kind + ' nucleotide sequence comparison (first 80 bases visualized when longer). ' +
+      'Helix geometry is schematic; a mutation does not establish a phenotype.',
+    frames: 2, extent: Math.max(2.45, Math.min(80, len) * .34 * .35), paletteToggle: true,
     frameLabel: (f) => f === 0 ? 'Original (' + original.length + ' bases)' : 'Mutated (' + mutated.length + ' bases)',
     at: (f, _mode, palette = 'default') => source(f === 0 ? original : mutated).at(0, 'full', palette),
   };
@@ -888,8 +889,9 @@ export function molecularReactionScene(reactants: StructuredReactionSpecies[], p
 
 export function rnaProcessingScene(preMrna: string, matureMrna: string): SceneSpec {
   return {
-    description: 'User-selected exon splicing of RNA 5′→3′. This sequence transformation does not predict splice sites, spliceosome kinetics, 5′ capping or polyadenylation.',
-    frames: 2, extent: Math.max(2.2, Math.max(preMrna.length, matureMrna.length) * .34 * .35),
+    description: 'User-selected exon splicing of RNA 5′→3′ (first 80 bases visualized when longer). ' +
+      'This sequence transformation does not predict splice sites, spliceosome kinetics, 5′ capping or polyadenylation.',
+    frames: 2, extent: Math.max(2.2, Math.min(80, Math.max(preMrna.length, matureMrna.length)) * .34 * .35),
     paletteToggle: true,
     frameLabel: (f) => f ? 'Spliced mature mRNA: ' + matureMrna.length + ' nucleotides' :
       'Pre-mRNA: ' + preMrna.length + ' nucleotides',
