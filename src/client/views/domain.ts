@@ -6,6 +6,7 @@ import { nowIso, newEntryId } from '../../core/session.js';
 import type { Entry, FormOp } from '../../core/types.js';
 import { debounce, isRecord } from '../../core/util.js';
 import { api, ApiError } from '../api.js';
+import { dnaScene, rnaScene, transcriptionScene, translationScene, reactionScene, scientificScene, type StoichSpecies, type TranslationStep } from '../science3d.js';
 import { h, replace } from '../dom.js';
 import { buildForm, type FormHandle } from '../domain-form.js';
 import { renderResult, type ResultCtx } from '../domain-results.js';
@@ -22,6 +23,38 @@ type R = Record<string, unknown>;
 const LIVE = new Set(['periodic_table', 'genetic_code', 'units', 'constants', 'formula_library']);
 /** Their results are large reference data, not a calculation worth keeping in a worksheet. */
 const NO_SAVE = new Set(['periodic_table', 'genetic_code', 'units']);
+
+
+/** Draw ONLY source-validated scientific data. Views never change the scientific calculation. */
+function scientificView(domain: string, operation: string, result: R): HTMLElement | null {
+  if (result.ok === false) return null;
+  let spec;
+  if (domain === 'biology') {
+    if (operation === 'sequence' && typeof result.sceneSequence === 'string')
+      spec = result.kind === 'RNA' ? rnaScene(result.sceneSequence) : dnaScene(result.sceneSequence);
+    else if (operation === 'translate' && typeof result.sceneRna === 'string') spec = rnaScene(result.sceneRna);
+    else if (operation === 'transcription' && typeof result.coding === 'string' && typeof result.mrna === 'string')
+      spec = transcriptionScene(result.coding, result.mrna);
+    else if (operation === 'protein_synthesis' && typeof result.mrna === 'string' && Array.isArray(result.codons)) {
+      const cs: TranslationStep[] = result.codons.filter(isRecord).map((c) => ({
+        codon: String(c.codon ?? ''), aa: String(c.aa ?? 'X'), anticodon: typeof c.anticodon === 'string' ? c.anticodon : undefined,
+      }));
+      spec = translationScene(result.mrna, cs, Math.max(0, Number(result.start || 1) - 1));
+    }
+  }
+  if (domain === 'chemistry' && operation === 'balance' && isRecord(result.atomInventory3d) && result.atomInventory3d.verified === true) {
+    const inventory = result.atomInventory3d;
+    const clean = (raw: unknown): StoichSpecies[] => (Array.isArray(raw) ? raw.filter(isRecord) : []).map((s) => ({
+      species: String(s.species ?? ''), coefficient: Math.max(0, Number(s.coefficient ?? 0)),
+      atoms: Object.fromEntries(Object.entries(isRecord(s.atoms) ? s.atoms : {}).filter(([_, n]) => Number.isInteger(n) && Number(n) >= 0).map(([k, n]) => [k, Number(n)])),
+    }));
+    spec = reactionScene(clean(inventory.reactants), clean(inventory.products));
+  }
+  if (!spec) return null;
+  return h('div', { class: 'section' },
+    h('div', { class: 'sectitle', text: 'Interactive scientific visualization' }),
+    scientificScene(spec).el);
+}
 
 /** Fill empty Finance fields from the person's own financial parameters (Constants > Financial parameters). Returns the labels that were filled. */
 function financeDefaults(domainId: string, op: FormOp, state: FormState): string[] {
@@ -105,6 +138,8 @@ export function createDomainView(domainId: string): WorkspaceView {
     else if (ok && o.view === 'constants') nodes.push(constantsTable(res, (t) => void copyText(t, 'Value copied')));
     else if (ok && o.view === 'library') nodes.push(formulaLibrary(res, useFormula));
     else nodes.push(renderResult(res, ctx));
+    const visual = scientificView(domainId, o.id, res);
+    if (visual) nodes.splice(1, 0, visual);
     replace(out, ...nodes);
   };
 
