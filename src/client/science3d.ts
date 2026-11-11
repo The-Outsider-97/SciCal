@@ -461,3 +461,14 @@ export function molecularReactionScene(reactants: StructuredReactionSpecies[], p
     },
   };
 }
+
+
+export function rnaProcessingScene(preMrna: string, matureMrna: string): SceneSpec {
+  return {
+    description: 'User-selected exon splicing of RNA 5′→3′. This sequence transformation does not predict splice sites, spliceosome kinetics, 5′ capping or polyadenylation.',
+    frames: 2, extent: 1.8,
+    frameLabel: (f) => f ? 'Spliced mature mRNA: ' + matureMrna.length + ' nucleotides' :
+      'Pre-mRNA: ' + preMrna.length + ' nucleotides',
+    at: (f) => rnaScene(f ? matureMrna : preMrna).at(0),
+  };
+}
