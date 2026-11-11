@@ -654,34 +654,55 @@ export interface TranslationStep { codon: string; aa: string; anticodon?: string
 export function translationScene(mrna: string, codons: TranslationStep[], start: number): SceneSpec {
   const steps = codons.slice(0, 65);
   const size = steps.length;
-  return { description: 'Schematic ribosomal translation: codons pair with tRNA anticodons (3′→5′); stop uses a release factor, not tRNA. No protein folding is inferred.',
-    frames: size + 1, extent: 2,
-    frameLabel: (f) => f === 0 ? 'Initiation at AUG' : 'Codon ' + f + '/' + size + ': ' + steps[f - 1]?.codon + ' → ' + (steps[f - 1]?.aa === '*' ? 'Stop' : steps[f - 1]?.aa),
-    at(frame) {
+  return {
+    description: 'Illustrative codon–anticodon matching: tRNA anticodons are aligned 3′→5′ to the mRNA. ' +
+      'Stop is recognized by a release factor, not tRNA. Amino acid chain is not a predicted protein fold.',
+    frames: size + 1, extent: Math.max(2.5, Math.min(60, size * 3) * .10),
+    paletteToggle: true,
+    frameLabel: (f) => f === 0 ? 'Initiation at AUG' :
+      'Codon ' + f + '/' + size + ': ' + steps[f - 1]?.codon + ' → ' +
+      (steps[f - 1]?.aa === '*' ? 'Stop' : steps[f - 1]?.aa),
+    at(frame, _mode, palette = 'default') {
       const parts: SciencePrimitive[] = [];
-      for (let i = 0; i < size * 3; i++) {
+      const count = Math.min(60, size * 3);
+      const nShift = frame < 1 ? 0 : Math.max(0, Math.min(size * 3 - count, frame * 3 - Math.floor(count / 2)));
+      const dx = .16, left = (count - 1) * dx / 2;
+      for (let local = 0; local < count; local++) {
+        const i = local + nShift;
         const nt = mrna[start + i] ?? 'N';
-        const p = point((i - (size * 3 - 1) / 2) * (2.3 / Math.max(1, size * 3 - 1)), -.35, 0);
-        parts.push(ball(p, nucleotideColor(nt), .06, nt));
-        if (i) parts.push(line(point((i - 1 - (size * 3 - 1) / 2) * (2.3 / Math.max(1, size * 3 - 1)), -.35, 0), p, '#b6a16b', 2));
+        const anchor: V3 = [local * dx - left, -.35, 0];
+        const tip: V3 = [anchor[0], -.35, -.35];
+        parts.push(rod(anchor, tip, nucleotideColor(nt, palette), .065,
+          nt + ' · mRNA position ' + (start + i + 1), 'mrna-' + (start + i + 1), 'codon-' + (Math.floor(i / 3) + 1)));
+        if (local) parts.push(rod([anchor[0] - dx, -.35, 0], anchor, '#c8ad76', .048));
       }
       const k = Math.min(size - 1, frame);
       if (size) {
-        const x = ((k * 3 + 1) - (size * 3 - 1) / 2) * (2.3 / Math.max(1, size * 3 - 1));
-        parts.push(ball(point(x, -.2, .2), '#b1a6b0', .32, 'R'));
+        const ribosomeX = ((k * 3 + 1 - nShift) * dx - left);
+        const ribosome: V3 = [ribosomeX, -.12, .35];
+        parts.push(ball(ribosome, '#b1a6b0', .32, 'R'));
         if (frame < size && steps[k].aa !== '*') {
           const anti = steps[k].anticodon ?? '';
-          for (let j = 0; j < 3; j++) parts.push(ball(point(x + (j - 1) * .115, -.05, .57), nucleotideColor(anti[j] ?? 'N'), .08, anti[j]));
+          for (let j = 0; j < 3; j++) {
+            const anchor: V3 = [ribosomeX + (j - 1) * .16, .16, .43];
+            parts.push(rod(anchor, [anchor[0], .43, .43],
+              nucleotideColor(anti[j] ?? 'N', palette), .07,
+              (anti[j] ?? 'N') + ' · tRNA anticodon 3′→5′', 'anticodon-' + j));
+          }
         }
       }
       const amino = steps.slice(0, frame).filter((s) => s.aa !== '*');
       for (let i = 0; i < amino.length; i++) {
-        const a = point(-.9 + i * (1.8 / Math.max(1, amino.length)), .45, .55 + .12 * Math.sin(i));
+        const a: V3 = [-.9 + i * (1.8 / Math.max(1, amino.length)), .55, .65 + .12 * Math.sin(i)];
         parts.push(ball(a, '#38a9a4', .095, amino[i].aa));
-        if (i) parts.push(line(point(-.9 + (i - 1) * (1.8 / Math.max(1, amino.length)), .45, .55 + .12 * Math.sin(i - 1)), a, '#578c8b', 3));
+        if (i) {
+          const p: V3 = [-.9 + (i - 1) * (1.8 / Math.max(1, amino.length)), .55, .65 + .12 * Math.sin(i - 1)];
+          parts.push(rod(p, a, '#578c8b', .05));
+        }
       }
       return parts;
-    } };
+    },
+  };
 }
 export interface StoichSpecies { species: string; coefficient: number; atoms: Record<string, number> }
 function elementColor(symbol: string): string {
@@ -718,9 +739,9 @@ export function mutationScene(original: string, mutated: string, kind: 'DNA' | '
   const source = (seq: string): SceneSpec => kind === 'RNA' ? rnaScene(seq) : dnaScene(seq);
   return {
     description: 'Before/after ' + kind + ' nucleotide sequence comparison. Helix geometry is schematic; a mutation does not establish a phenotype.',
-    frames: 2, extent: 1.8,
+    frames: 2, extent: Math.max(2.45, len * .34 * .35), paletteToggle: true,
     frameLabel: (f) => f === 0 ? 'Original (' + original.length + ' bases)' : 'Mutated (' + mutated.length + ' bases)',
-    at: (f) => source(f === 0 ? original : mutated).at(0).map((shape) => shape),
+    at: (f, _mode, palette = 'default') => source(f === 0 ? original : mutated).at(0, 'full', palette),
   };
 }
 
@@ -868,10 +889,11 @@ export function molecularReactionScene(reactants: StructuredReactionSpecies[], p
 export function rnaProcessingScene(preMrna: string, matureMrna: string): SceneSpec {
   return {
     description: 'User-selected exon splicing of RNA 5′→3′. This sequence transformation does not predict splice sites, spliceosome kinetics, 5′ capping or polyadenylation.',
-    frames: 2, extent: 1.8,
+    frames: 2, extent: Math.max(2.2, Math.max(preMrna.length, matureMrna.length) * .34 * .35),
+    paletteToggle: true,
     frameLabel: (f) => f ? 'Spliced mature mRNA: ' + matureMrna.length + ' nucleotides' :
       'Pre-mRNA: ' + preMrna.length + ' nucleotides',
-    at: (f) => rnaScene(f ? matureMrna : preMrna).at(0),
+    at: (f, _mode, palette = 'default') => rnaScene(f ? matureMrna : preMrna).at(0, 'full', palette),
   };
 }
 
