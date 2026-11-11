@@ -122,8 +122,8 @@ export function scientificScene(spec: SceneSpec): ScienceScene {
   loopLabel.append(loop, document.createTextNode(' Infinite loop'));
   loop.addEventListener('change', () => {
     infiniteLoop = loop.checked;
-    // Enabling looping at a finished animation makes the normal Play action
-    // start a new cycle, but does not silently start or change playback.
+    // Switching playback behavior does not silently restart or pause a scene.
+    setFrame(frame);
   });
   const back = button('◀', () => setFrame(frame - 1));
   const forward = button('▶', () => setFrame(frame + 1));
