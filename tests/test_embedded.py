@@ -120,7 +120,7 @@ class BundledIcons(unittest.TestCase):
 
 
 class DesktopLauncherProtocol(unittest.TestCase):
-    """What the Tauri shell relies on: one READY line with the address, a fallback port, and exit when the shell's pipe closes."""
+    """What the Tauri shell relies on: one READY line with the address, a fallback port, and exit when the app is gone."""
 
     def start(self, tmp: str, *extra: str) -> subprocess.Popen:
         return subprocess.Popen([sys.executable, "-m", "scical", "--no-browser", "--agents", "none", "--ready-line", "--exit-on-stdin-close", "--port-fallback",
@@ -138,7 +138,7 @@ class DesktopLauncherProtocol(unittest.TestCase):
                 return json.loads(line[len("SCICAL_READY "):])
         raise AssertionError("no SCICAL_READY line")
 
-    def test_ready_line_gives_a_working_address_and_closing_stdin_stops_the_engine(self):
+    def test_ready_line_gives_a_working_address(self):
         with tempfile.TemporaryDirectory() as tmp:
             proc = self.start(tmp, "--port", "0")
             try:
@@ -148,12 +148,49 @@ class DesktopLauncherProtocol(unittest.TestCase):
                 c = http.client.HTTPConnection("127.0.0.1", info["port"], timeout=10)
                 c.request("GET", "/?token=" + info["token"], headers={"Host": f"127.0.0.1:{info['port']}"})
                 self.assertIn(c.getresponse().status, (200, 302, 303))
-                proc.stdin.close()
-                self.assertEqual(proc.wait(timeout=20), 0, "the engine ended by itself when its input closed")
             finally:
-                if proc.poll() is None:
-                    proc.kill()
+                proc.kill()
+                proc.wait()
                 proc.stdout.close()
+                proc.stdin.close()
+
+    @unittest.skipIf(os.name == "nt", "uses a POSIX shell as the stand-in app")
+    def test_the_engine_stops_when_the_app_that_started_it_is_gone_and_never_reads_stdin(self):
+        """The 'app' here is a shell that starts the engine and then waits. Killing it must end the engine, while the engine's standard input
+        (a pipe nobody closes) stays open: the engine may not depend on, or read, standard input (see scical/parent_watch.py)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            pidfile = Path(tmp) / "engine.pid"
+            cmd = (f'"{sys.executable}" -m scical --no-browser --agents none --ready-line --exit-on-stdin-close --port 0 --worker-mode thread '
+                   f'--data-dir "{tmp}/data" --output-dir "{tmp}/out" > "{tmp}/out.txt" & echo $! > "{pidfile}"; wait')
+            app = subprocess.Popen(["sh", "-c", cmd], cwd=ROOT, stdin=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                   env={**os.environ, "PYTHONPATH": os.pathsep.join([str(ROOT), os.environ.get("PYTHONPATH", "")])})
+            engine_pid = None
+            try:
+                deadline = time.time() + 60
+                while time.time() < deadline and "SCICAL_READY" not in (Path(tmp) / "out.txt").read_text() if (Path(tmp) / "out.txt").exists() else True:
+                    time.sleep(0.2)
+                engine_pid = int(pidfile.read_text())
+                os.kill(engine_pid, 0)                                   # running
+                app.kill()
+                app.wait()
+                deadline = time.time() + 20
+                gone = False
+                while time.time() < deadline and not gone:
+                    try:
+                        os.kill(engine_pid, 0)
+                        time.sleep(0.3)
+                    except ProcessLookupError:
+                        gone = True
+                self.assertTrue(gone, "the engine ended by itself when the app was gone")
+            finally:
+                if app.poll() is None:
+                    app.kill()
+                if engine_pid:
+                    try:
+                        os.kill(engine_pid, 9)
+                    except ProcessLookupError:
+                        pass
+                app.stdin.close()
 
     def test_a_taken_port_falls_back_to_a_free_one(self):
         with tempfile.TemporaryDirectory() as tmp, socket.socket() as taken:
@@ -164,12 +201,10 @@ class DesktopLauncherProtocol(unittest.TestCase):
                 info = self.ready(proc)
                 self.assertNotEqual(info["port"], taken.getsockname()[1])
             finally:
-                proc.stdin.close()
-                try:
-                    proc.wait(timeout=20)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
+                proc.kill()
+                proc.wait()
                 proc.stdout.close()
+                proc.stdin.close()
 
 
 if __name__ == "__main__":

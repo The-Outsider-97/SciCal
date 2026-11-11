@@ -105,15 +105,10 @@ def main(argv: list[str] | None = None) -> int:
                 signal.signal(getattr(signal, name), stop)
             except (ValueError, OSError):
                 pass
-    if args.exit_on_stdin_close:
-        def watch_parent() -> None:
-            try:
-                while sys.stdin.buffer.read(4096):
-                    pass
-            except Exception:  # noqa: BLE001
-                pass
-            stop()
-        threading.Thread(target=watch_parent, name="scical-parent-watch", daemon=True).start()
+    if args.exit_on_stdin_close:                              # the desktop app's flag: stop when the app is gone (see parent_watch for why not stdin)
+        from .parent_watch import watch
+        watch(stop)
+    print(f"SciCal: engine ready on port {server.port} (workers: {s.worker_mode}, SLAI: {s.slai_root})", file=sys.stderr, flush=True)
     try:
         server.serve_forever(poll_interval=0.25)
     except KeyboardInterrupt:

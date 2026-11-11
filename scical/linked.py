@@ -73,7 +73,7 @@ def find_linked(base: Path | None = None, env: Mapping[str, str] | None = None) 
     if py is None:
         raise LinkedError(f"SLAI's Python environment (a 'venv' folder) was not found in {root}. SciCal runs inside it so the SLAI agents and exports work.")
     try:
-        done = subprocess.run([str(py), "-c", "import sympy, mpmath, numpy"], cwd=str(app), capture_output=True, text=True, timeout=90,
+        done = subprocess.run([str(py), "-c", "import sympy, mpmath, numpy"], cwd=str(app), stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=90,
                               creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0)
     except (OSError, subprocess.SubprocessError) as exc:
         raise LinkedError(f"SLAI's Python ({py}) could not be started: {exc}") from exc
@@ -111,7 +111,7 @@ def run_linked(argv: Sequence[str], base: Path | None = None, env: Mapping[str, 
     child_env.update(SLAI_ROOT=str(root), PYTHONUNBUFFERED="1", PYTHONUTF8="1",
                      PYTHONPATH=os.pathsep.join(p for p in (str(app), child_env.get("PYTHONPATH", "")) if p))
     try:
-        proc = subprocess.Popen([str(py), "-m", "scical", *args], cwd=str(app), env=child_env, stdout=subprocess.PIPE, stderr=err, text=True,
+        proc = subprocess.Popen([str(py), "-m", "scical", *args], cwd=str(app), env=child_env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=err, text=True,
                                 encoding="utf-8", errors="replace", creationflags=CREATE_NO_WINDOW if os.name == "nt" else 0)
     except OSError as exc:
         raise LinkedError(f"SLAI's Python ({py}) could not be started: {exc}") from exc
